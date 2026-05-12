@@ -4,3 +4,5 @@ arquivos de instalação
 2. npm install
 3. npx expo install react-dom react-native-web
 4. npx expo start
+
+5. npm install @expo/vector-icons
