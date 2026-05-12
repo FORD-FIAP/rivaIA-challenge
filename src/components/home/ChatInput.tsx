@@ -1,4 +1,4 @@
-/** Composer principal da Home — "Pergunte qualquer coisa sobre carros…" */
+/** Composer principal da Home — "Pergunte à RIVA..." */
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -19,13 +19,9 @@ export function ChatInput({ onSend }: ChatInputProps) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.iconButton}>
-        <Feather name="message-circle" size={18} color={Colors.textMuted} />
-      </TouchableOpacity>
-
       <TextInput
         style={styles.input}
-        placeholder="Pergunte qualquer coisa sobre carros…"
+        placeholder=""
         placeholderTextColor={Colors.textHint}
         value={text}
         onChangeText={setText}
@@ -34,43 +30,51 @@ export function ChatInput({ onSend }: ChatInputProps) {
         multiline={false}
       />
 
-      <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-        <Feather name="arrow-right" size={16} color={Colors.primary} />
-      </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.addBtn}>
+          <Feather name="plus" size={14} color={Colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.addBtn}>
+          <Feather name="arrow-right" size={14} color={Colors.textSecondary}/>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Colors.inputBg,
     borderRadius: Colors.radiusXl,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  iconButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 12,
   },
   input: {
-    flex: 1,
     color: Colors.textPrimary,
     fontSize: 14,
     fontFamily: 'Sora_400Regular',
+    minHeight: 20,
   },
-  sendButton: {
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,

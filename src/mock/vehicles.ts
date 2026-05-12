@@ -11,7 +11,6 @@ export const featuredVehicle: Vehicle = {
   torque: 583,
   consumption: 7.5,
   price: 459900,
-  image: require('../../assets/icon.png'),
   isFeatured: true,
 };
 
@@ -26,7 +25,6 @@ export const vehicles: Vehicle[] = [
     torque: 0,
     consumption: 16.2,
     price: 239900,
-    image: require('../../assets/icon.png'),
   },
   {
     id: '3',
@@ -38,7 +36,6 @@ export const vehicles: Vehicle[] = [
     torque: 0,
     consumption: 9.8,
     price: 219990,
-    image: require('../../assets/icon.png'),
   },
   {
     id: '4',
@@ -50,7 +47,6 @@ export const vehicles: Vehicle[] = [
     torque: 0,
     consumption: 9.2,
     price: 239900,
-    image: require('../../assets/icon.png'),
   },
   {
     id: '5',
@@ -62,6 +58,5 @@ export const vehicles: Vehicle[] = [
     torque: 0,
     consumption: 7.5,
     price: 459900,
-    image: require('../../assets/icon.png'),
   },
 ];

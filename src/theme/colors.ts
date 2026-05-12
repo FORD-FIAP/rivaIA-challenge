@@ -1,8 +1,8 @@
-/** Tokens de cor do design system RIVA — use sempre as variáveis, nunca hex direto */
+/** Tokens de cor do design system RIVA */
 export const Colors = {
   // Superfícies
   bg:        '#1E1A1B',
-  surface:   '#141213',
+  surface:   '#0F1418',
   surface2:  '#0F1418',
   inputBg:   '#0D2A42',
 

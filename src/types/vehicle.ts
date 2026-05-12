@@ -9,7 +9,5 @@ export interface Vehicle {
   torque: number;      // Nm
   consumption: number; // km/l
   price: number;
-  /** Caminho local da imagem do veículo */
-  image: any;
   isFeatured?: boolean;
 }
