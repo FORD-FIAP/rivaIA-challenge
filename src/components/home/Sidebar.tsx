@@ -21,7 +21,6 @@ const NAV_ITEMS = [
   { label: 'Início',    icon: 'home'     as const },
   { label: 'Veículos',  icon: 'truck'    as const },
   { label: 'Comparar',  icon: 'bar-chart-2' as const },
-  { label: 'Perfil',    icon: 'user'     as const },
 ];
 
 const RECENT_CONVERSATIONS = [

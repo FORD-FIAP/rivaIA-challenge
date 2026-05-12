@@ -1,7 +1,7 @@
 /** Card de veículo para o grid de 2 colunas — "Veículos mais analisados" */
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 
@@ -18,27 +18,28 @@ function formatPrice(value: number): string {
 export function VehicleCard({ vehicle, onPress }: VehicleCardProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      {/* Imagem */}
-      <View style={styles.imageWrapper}>
+      {/* Placeholder ilustrativo — substitui imagem até ter assets reais */}
+      <View style={styles.iconWrapper}>
         <Text style={styles.brand}>{vehicle.brand}</Text>
-        <Image source={vehicle.image} style={styles.image} resizeMode="contain" />
+        <MaterialCommunityIcons name="truck" size={40} color={Colors.action} style={styles.truckIcon} />
       </View>
 
-      {/* Informações */}
-      <Text style={styles.name}>{vehicle.name}</Text>
-      <Text style={styles.engineLine}>
+      {/* Nome — 2 linhas máximo para manter altura igual */}
+      <Text style={styles.name} numberOfLines={2}>{vehicle.name}</Text>
+
+      <Text style={styles.engineLine} numberOfLines={1}>
         {vehicle.engine} · {vehicle.year}
       </Text>
+
       <Text style={styles.price}>{formatPrice(vehicle.price)}</Text>
 
-      {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Feather name="zap" size={10} color={Colors.accent} />
           <Text style={styles.statText}>{vehicle.power} cv</Text>
         </View>
         <View style={styles.stat}>
-          <Feather name="droplet" size={10} color={Colors.accent} />
+          <MaterialCommunityIcons name="water-outline" size={11} color={Colors.accent} />
           <Text style={styles.statText}>{vehicle.consumption} km/l</Text>
         </View>
       </View>
@@ -54,11 +55,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderStrong,
     borderRadius: Colors.radiusLg,
     padding: 12,
+    minHeight: 220,
+    justifyContent: 'space-between',
   },
-  imageWrapper: {
-    backgroundColor: 'rgba(11,30,52,0.5)',
+  iconWrapper: {
+    backgroundColor: Colors.surface2,
     borderRadius: Colors.radiusMd,
-    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 10,
+    alignItems: 'center',
     marginBottom: 10,
   },
   brand: {
@@ -67,19 +73,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
+    alignSelf: 'flex-start',
     fontFamily: 'Sora_700Bold',
   },
-  image: {
-    width: '100%',
-    height: 72,
+  truckIcon: {
+    opacity: 0.85,
   },
   name: {
     color: Colors.textPrimary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 2,
     fontFamily: 'Sora_600SemiBold',
+    minHeight: 34,
   },
   engineLine: {
     color: Colors.textMuted,

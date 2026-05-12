@@ -1,6 +1,6 @@
 /** Header fixo presente em todas as telas: histórico / RIVA ˅ / menu */
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 
@@ -33,7 +33,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingBottom: 14,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 8 : 52,
     backgroundColor: Colors.bg,
   },
   iconButton: {

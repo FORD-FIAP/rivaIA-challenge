@@ -1,7 +1,7 @@
 /** Card de destaque — veículo principal da semana (Picape da semana) */
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 
@@ -21,9 +21,11 @@ export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
       {/* Label da marca */}
       <Text style={styles.brand}>{vehicle.brand}</Text>
 
-      {/* Imagem do veículo */}
+      {/* Placeholder ilustrativo — substitui imagem até ter assets reais */}
       <View style={styles.imageWrapper}>
-        <Image source={vehicle.image} style={styles.image} resizeMode="contain" />
+        <View style={styles.iconBg}>
+          <MaterialCommunityIcons name="truck" size={72} color={Colors.action} style={styles.truckIcon} />
+        </View>
       </View>
 
       {/* Identificação */}
@@ -79,14 +81,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_700Bold',
   },
   imageWrapper: {
-    backgroundColor: 'rgba(11,30,52,0.5)',
     borderRadius: Colors.radiusLg,
     marginBottom: 14,
     overflow: 'hidden',
   },
-  image: {
-    width: '100%',
+  iconBg: {
     height: 140,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Colors.radiusLg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  truckIcon: {
+    opacity: 0.9,
   },
   yearBrand: {
     color: Colors.accent,
