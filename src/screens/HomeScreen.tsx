@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/home/Header';
 import { Sidebar } from '../components/home/Sidebar';
@@ -20,23 +21,20 @@ import { Colors } from '../theme/colors';
 import { featuredVehicle, vehicles } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-/** Altura aproximada do header para o hero ocupar o restante da tela */
-const HEADER_HEIGHT = 64;
-
 export function HomeScreen() {
+  const { height: windowHeight } = useWindowDimensions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vehicleList, setVehicleList] = useState<Vehicle[]>([]);
+  const [headerHeight, setHeaderHeight] = useState(80);
   const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
-  /** Carrega lista de veículos ao montar a tela */
+  const heroHeight = windowHeight - headerHeight;
+
   useEffect(() => {
     setVehicleList(vehicles);
   }, []);
 
-  /** Animação de bounce contínua no botão flutuante */
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -56,28 +54,23 @@ export function HomeScreen() {
     console.log('Veículo selecionado:', vehicle.name);
   }
 
-  /** Rola até a seção de veículos ao pressionar o botão flutuante */
   function scrollToVehicles() {
-    scrollRef.current?.scrollTo({ y: SCREEN_HEIGHT - HEADER_HEIGHT, animated: true });
+    scrollRef.current?.scrollTo({ y: heroHeight, animated: true });
   }
 
   return (
-    <View style={styles.safe}>
-      <Header onMenuPress={() => setSidebarOpen(true)} />
-
-      <Sidebar
-        visible={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeScreen="Início"
-      />
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+        <Header onMenuPress={() => setSidebarOpen(true)} />
+      </View>
 
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — ocupa a tela toda */}
-        <View style={[styles.hero, { height: SCREEN_HEIGHT - HEADER_HEIGHT }]}>
+        {/* Hero — ocupa a tela toda abaixo do header */}
+        <View style={[styles.hero, { height: heroHeight }]}>
 
           {/* Greeting — centralizado verticalmente */}
           <View style={styles.greetingBlock}>
@@ -142,7 +135,14 @@ export function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+
+      {/* Sidebar renderizada por último para ficar acima de todo o conteúdo */}
+      <Sidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeScreen="Início"
+      />
+    </SafeAreaView>
   );
 }
 
@@ -155,16 +155,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Hero fullscreen — tudo agrupado no centro da tela
   hero: {
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
-    gap: 32,
+    paddingTop: 32,
+    paddingBottom: 32,
   },
   greetingBlock: {
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
     color: Colors.textPrimary,
@@ -193,7 +195,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // Botão flutuante — abaixo do composer
   floatingBtn: {
     alignItems: 'center',
   },
@@ -208,7 +209,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
   },
 
-  // Seção de veículos
   vehiclesSection: {
     paddingHorizontal: 20,
     paddingBottom: 48,

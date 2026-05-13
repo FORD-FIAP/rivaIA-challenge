@@ -1,12 +1,12 @@
-/** Drawer lateral presente em todas as telas com navegação e conversas recentes */
-import React from 'react';
+/** Drawer lateral — overlay absoluto (não usa Modal para ficar dentro do phone frame) */
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
@@ -18,9 +18,9 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { label: 'Início',    icon: 'home'     as const },
-  { label: 'Veículos',  icon: 'truck'    as const },
-  { label: 'Comparar',  icon: 'bar-chart-2' as const },
+  { label: 'Início',   icon: 'home'         as const },
+  { label: 'Veículos', icon: 'truck'         as const },
+  { label: 'Comparar', icon: 'bar-chart-2'   as const },
 ];
 
 const RECENT_CONVERSATIONS = [
@@ -32,93 +32,121 @@ const RECENT_CONVERSATIONS = [
   'Vale upgrade do SYNC 4?',
 ];
 
+/** Distância off-screen (direita) quando fechada */
+const DRAWER_OFFSET = 400;
+
 export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarProps) {
+  const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: visible ? 0 : DRAWER_OFFSET,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: visible ? 1 : 0,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [visible]);
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} onPress={onClose} />
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      {/* Backdrop semitransparente */}
+      <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+      </Animated.View>
 
-        <View style={styles.drawer}>
-          {/* Cabeçalho */}
-          <View style={styles.drawerHeader}>
-            <View style={styles.orbSmall} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.drawerTitle}>RIVA</Text>
-              <Text style={styles.drawerSubtitle}>Sua consultora de carros</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Feather name="x" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
+      {/* Drawer deslizante da direita */}
+      <Animated.View
+        style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}
+      >
+        {/* Cabeçalho */}
+        <View style={styles.drawerHeader}>
+          <View style={styles.orbSmall} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.drawerTitle}>RIVA</Text>
+            <Text style={styles.drawerSubtitle}>Sua consultora de carros</Text>
           </View>
-
-          {/* Botão novo chat */}
-          <TouchableOpacity style={styles.newChatButton}>
-            <Feather name="plus" size={16} color={Colors.accent} />
-            <Text style={styles.newChatLabel}>Novo chat</Text>
-          </TouchableOpacity>
-
-          {/* Navegação */}
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.label === activeScreen;
-            return (
-              <TouchableOpacity key={item.label} style={styles.navItem}>
-                <Feather
-                  name={item.icon}
-                  size={16}
-                  color={isActive ? Colors.textPrimary : Colors.textMuted}
-                />
-                <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                  {item.label}
-                </Text>
-                {isActive && <View style={styles.activeDot} />}
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Conversas recentes */}
-          <Text style={styles.sectionLabel}>CONVERSAS RECENTES</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {RECENT_CONVERSATIONS.map((title) => (
-              <TouchableOpacity key={title} style={styles.conversationItem}>
-                <Feather name="message-circle" size={13} color={Colors.textMuted} />
-                <Text style={styles.conversationTitle} numberOfLines={1}>
-                  {title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Rodapé — perfil */}
-          <TouchableOpacity style={styles.profileRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarLetter}>M</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.profileName}>Mariana Dourado</Text>
-              <Text style={styles.profileLogin}>Faça login</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Feather name="x" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
         </View>
-      </View>
-    </Modal>
+
+        {/* Botão novo chat */}
+        <TouchableOpacity style={styles.newChatButton}>
+          <Feather name="plus" size={16} color={Colors.accent} />
+          <Text style={styles.newChatLabel}>Novo chat</Text>
+        </TouchableOpacity>
+
+        {/* Navegação */}
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.label === activeScreen;
+          return (
+            <TouchableOpacity key={item.label} style={styles.navItem}>
+              <Feather
+                name={item.icon}
+                size={16}
+                color={isActive ? Colors.textPrimary : Colors.textMuted}
+              />
+              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                {item.label}
+              </Text>
+              {isActive && <View style={styles.activeDot} />}
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Conversas recentes */}
+        <Text style={styles.sectionLabel}>CONVERSAS RECENTES</Text>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          {RECENT_CONVERSATIONS.map((title) => (
+            <TouchableOpacity key={title} style={styles.conversationItem}>
+              <Feather name="message-circle" size={13} color={Colors.textMuted} />
+              <Text style={styles.conversationTitle} numberOfLines={1}>
+                {title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Rodapé — perfil */}
+        <TouchableOpacity style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarLetter}>M</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.profileName}>Mariana Dourado</Text>
+            <Text style={styles.profileLogin}>Faça login</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
   backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   drawer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
     width: '82%',
     backgroundColor: Colors.surface,
     padding: 20,
+    paddingTop: 24,
   },
   drawerHeader: {
     flexDirection: 'row',
@@ -196,7 +224,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 2,
-    textTransform: 'uppercase',
     marginTop: 20,
     marginBottom: 8,
     fontFamily: 'Sora_600SemiBold',
