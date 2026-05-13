@@ -140,7 +140,6 @@ export function HomeScreen() {
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        activeScreen="Início"
       />
     </SafeAreaView>
   );
