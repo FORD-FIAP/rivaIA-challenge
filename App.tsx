@@ -1,7 +1,8 @@
 /** Ponto de entrada do app RIVA — carrega fonte Sora antes de renderizar */
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   Sora_400Regular,
@@ -11,7 +12,10 @@ import {
 } from '@expo-google-fonts/sora';
 import { HomeScreen } from './src/screens/HomeScreen';
 
+const DESKTOP_BREAKPOINT = 600;
+
 export default function App() {
+  const { width: windowWidth } = useWindowDimensions();
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
     Sora_500Medium,
@@ -21,16 +25,46 @@ export default function App() {
 
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#1E1A1B', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#05D3F8" />
-      </View>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: '#1E1A1B', alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color="#05D3F8" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
+  const showDesktopFrame = Platform.OS === 'web' && windowWidth >= DESKTOP_BREAKPOINT;
+
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
-      <HomeScreen />
-    </>
+      {showDesktopFrame ? (
+        <View style={styles.webContainer}>
+          <View style={styles.phoneFrame}>
+            <HomeScreen />
+          </View>
+        </View>
+      ) : (
+        <HomeScreen />
+      )}
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  webContainer: {
+    flex: 1,
+    backgroundColor: '#111111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneFrame: {
+    width: 430,
+    flex: 1,
+    maxHeight: 932,
+    overflow: 'hidden',
+    borderRadius: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+});
