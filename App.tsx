@@ -10,9 +10,18 @@ import {
   Sora_600SemiBold,
   Sora_700Bold,
 } from '@expo-google-fonts/sora';
+import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { VeiculosScreen } from './src/screens/VeiculosScreen';
 
 const DESKTOP_BREAKPOINT = 600;
+
+function AppScreens() {
+  const { activeScreen } = useNavigation();
+
+  if (activeScreen === 'Veículos') return <VeiculosScreen />;
+  return <HomeScreen />;
+}
 
 export default function App() {
   const { width: windowWidth } = useWindowDimensions();
@@ -37,16 +46,18 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      {showDesktopFrame ? (
-        <View style={styles.webContainer}>
-          <View style={styles.phoneFrame}>
-            <HomeScreen />
+      <NavigationProvider>
+        <StatusBar style="light" />
+        {showDesktopFrame ? (
+          <View style={styles.webContainer}>
+            <View style={styles.phoneFrame}>
+              <AppScreens />
+            </View>
           </View>
-        </View>
-      ) : (
-        <HomeScreen />
-      )}
+        ) : (
+          <AppScreens />
+        )}
+      </NavigationProvider>
     </SafeAreaProvider>
   );
 }

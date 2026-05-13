@@ -10,17 +10,17 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
+import { useNavigation, AppScreen } from '../../context/NavigationContext';
 
 interface SidebarProps {
   visible: boolean;
   onClose: () => void;
-  activeScreen?: string;
 }
 
-const NAV_ITEMS = [
-  { label: 'Início',   icon: 'home'         as const },
-  { label: 'Veículos', icon: 'truck'         as const },
-  { label: 'Comparar', icon: 'bar-chart-2'   as const },
+const NAV_ITEMS: { label: AppScreen; icon: React.ComponentProps<typeof Feather>['name'] }[] = [
+  { label: 'Início',   icon: 'home'        },
+  { label: 'Veículos', icon: 'truck'       },
+  { label: 'Comparar', icon: 'bar-chart-2' },
 ];
 
 const RECENT_CONVERSATIONS = [
@@ -32,10 +32,10 @@ const RECENT_CONVERSATIONS = [
   'Vale upgrade do SYNC 4?',
 ];
 
-/** Distância off-screen (direita) quando fechada */
 const DRAWER_OFFSET = 400;
 
-export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarProps) {
+export function Sidebar({ visible, onClose }: SidebarProps) {
+  const { activeScreen, navigate } = useNavigation();
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,6 +53,11 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
       }),
     ]).start();
   }, [visible]);
+
+  function handleNavPress(screen: AppScreen) {
+    navigate(screen);
+    onClose();
+  }
 
   return (
     <View
@@ -90,7 +95,11 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
         {NAV_ITEMS.map((item) => {
           const isActive = item.label === activeScreen;
           return (
-            <TouchableOpacity key={item.label} style={styles.navItem}>
+            <TouchableOpacity
+              key={item.label}
+              style={styles.navItem}
+              onPress={() => handleNavPress(item.label)}
+            >
               <Feather
                 name={item.icon}
                 size={16}
