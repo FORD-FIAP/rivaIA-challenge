@@ -11,6 +11,7 @@ import {
   Sora_700Bold,
 } from '@expo-google-fonts/sora';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
+import { FavoritesProvider } from './src/context/FavoritesContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
 
@@ -47,16 +48,18 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationProvider>
-        <StatusBar style="light" />
-        {showDesktopFrame ? (
-          <View style={styles.webContainer}>
-            <View style={styles.phoneFrame}>
-              <AppScreens />
+        <FavoritesProvider>
+          <StatusBar style="light" />
+          {showDesktopFrame ? (
+            <View style={styles.webContainer}>
+              <View style={styles.phoneFrame}>
+                <AppScreens />
+              </View>
             </View>
-          </View>
-        ) : (
-          <AppScreens />
-        )}
+          ) : (
+            <AppScreens />
+          )}
+        </FavoritesProvider>
       </NavigationProvider>
     </SafeAreaProvider>
   );

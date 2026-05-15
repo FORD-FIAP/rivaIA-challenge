@@ -8,9 +8,14 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 import { useNavigation, AppScreen } from '../../context/NavigationContext';
+import { useFavoritesContext } from '../../context/FavoritesContext';
+import { vehicles, featuredVehicle } from '../../mock/vehicles';
+import { Vehicle } from '../../types/vehicle';
+
+const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
 interface SidebarProps {
   visible: boolean;
@@ -35,7 +40,9 @@ const RECENT_CONVERSATIONS = [
 const DRAWER_OFFSET = 400;
 
 export function Sidebar({ visible, onClose }: SidebarProps) {
-  const { activeScreen, navigate } = useNavigation();
+  const { activeScreen, navigate, openVehicle } = useNavigation();
+  const { favorites } = useFavoritesContext();
+  const favoriteVehicles = ALL_VEHICLES.filter((v) => favorites.includes(v.id));
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
@@ -113,8 +120,30 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
           );
         })}
 
+        {/* Favoritos */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionLabel}>FAVORITOS</Text>
+          <MaterialCommunityIcons name="star" size={11} color={Colors.accent} />
+        </View>
+        {favoriteVehicles.length === 0 ? (
+          <Text style={styles.emptyFavorites}>Nenhum favorito ainda</Text>
+        ) : (
+          favoriteVehicles.map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={styles.favoriteItem}
+              onPress={() => { openVehicle(v.id); onClose(); }}
+            >
+              <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
+              <Text style={styles.favoriteTitle} numberOfLines={1}>
+                {v.name}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+
         {/* Conversas recentes */}
-        <Text style={styles.sectionLabel}>CONVERSAS RECENTES</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>CONVERSAS RECENTES</Text>
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
           {RECENT_CONVERSATIONS.map((title) => (
             <TouchableOpacity key={title} style={styles.conversationItem}>
@@ -228,14 +257,37 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: Colors.accent,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 20,
+    marginBottom: 8,
+  },
   sectionLabel: {
     color: Colors.textHint,
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 2,
-    marginTop: 20,
-    marginBottom: 8,
     fontFamily: 'Sora_600SemiBold',
+  },
+  emptyFavorites: {
+    color: Colors.textHint,
+    fontSize: 12,
+    fontFamily: 'Sora_400Regular',
+    paddingVertical: 4,
+  },
+  favoriteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 9,
+  },
+  favoriteTitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    flex: 1,
+    fontFamily: 'Sora_400Regular',
   },
   conversationItem: {
     flexDirection: 'row',

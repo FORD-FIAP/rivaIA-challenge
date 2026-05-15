@@ -5,15 +5,28 @@ export type AppScreen = 'Início' | 'Veículos' | 'Comparar';
 interface NavigationContextValue {
   activeScreen: AppScreen;
   navigate: (screen: AppScreen) => void;
+  pendingVehicleId: string | null;
+  openVehicle: (vehicleId: string) => void;
+  clearPendingVehicle: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
 
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('Início');
+  const [pendingVehicleId, setPendingVehicleId] = useState<string | null>(null);
+
+  function openVehicle(vehicleId: string) {
+    setPendingVehicleId(vehicleId);
+    setActiveScreen('Veículos');
+  }
+
+  function clearPendingVehicle() {
+    setPendingVehicleId(null);
+  }
 
   return (
-    <NavigationContext.Provider value={{ activeScreen, navigate: setActiveScreen }}>
+    <NavigationContext.Provider value={{ activeScreen, navigate: setActiveScreen, pendingVehicleId, openVehicle, clearPendingVehicle }}>
       {children}
     </NavigationContext.Provider>
   );
