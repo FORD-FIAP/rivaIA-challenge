@@ -4,7 +4,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
-
 interface VehicleResultCardProps {
   vehicle: Vehicle;
   onPress: () => void;
@@ -19,13 +18,13 @@ export function VehicleResultCard({ vehicle, onPress }: VehicleResultCardProps) 
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.85}>
       {/* Área da imagem */}
       <View style={styles.imageArea}>
-        <Text style={styles.brandLabel}>{vehicle.brand}</Text>
         <MaterialCommunityIcons name="truck" size={56} color={Colors.action} />
       </View>
 
       {/* Informações */}
       <View style={styles.info}>
         <Text style={styles.brandYear}>{vehicle.brand} · {vehicle.year}</Text>
+
         <Text style={styles.name}>{vehicle.name}</Text>
         <Text style={styles.engine}>{vehicle.engine}</Text>
 
@@ -64,16 +63,6 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: Colors.border,
     paddingVertical: 12,
-  },
-  brandLabel: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    color: Colors.accent,
-    fontSize: 8,
-    fontWeight: '700',
-    letterSpacing: 1,
-    fontFamily: 'Sora_700Bold',
   },
   info: {
     flex: 1,

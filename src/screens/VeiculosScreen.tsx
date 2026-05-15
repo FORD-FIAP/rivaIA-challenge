@@ -1,5 +1,5 @@
 /** Tela de busca e listagem de veículos */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { VehicleDetailSheet } from '../components/veiculos/VehicleDetailSheet';
 import { Colors } from '../theme/colors';
 import { vehicles, featuredVehicle } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
+import { useNavigation } from '../context/NavigationContext';
 
 const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
@@ -41,6 +42,15 @@ export function VeiculosScreen() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [search, setSearch] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const { pendingVehicleId, clearPendingVehicle } = useNavigation();
+
+  useEffect(() => {
+    if (pendingVehicleId) {
+      const vehicle = ALL_VEHICLES.find((v) => v.id === pendingVehicleId) ?? null;
+      setSelectedVehicle(vehicle);
+      clearPendingVehicle();
+    }
+  }, [pendingVehicleId]);
 
   const hasSearch = search.trim().length > 0;
   const hasFilters = Object.values(appliedFilters).some((arr) => arr.length > 0);
@@ -264,7 +274,7 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     paddingHorizontal: 20,
-    gap: 12,
+    gap: 20,
     paddingBottom: 40,
   },
   emptyResults: {
