@@ -35,6 +35,7 @@ const RECENT_CONVERSATIONS = [
   'Diferença entre Ranger XLT e Limited',
   'Tremor é confortável no asfalto?',
   'Vale upgrade do SYNC 4?',
+  'Melhores modelos de 2024 SUV para o Brasil',
 ];
 
 const DRAWER_OFFSET = 400;
@@ -63,7 +64,6 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
 
   function handleNavPress(screen: AppScreen) {
     navigate(screen);
-    onClose();
   }
 
   return (
@@ -92,12 +92,6 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
           </TouchableOpacity>
         </View>
 
-        {/* Botão novo chat */}
-        <TouchableOpacity style={styles.newChatButton}>
-          <Feather name="plus" size={16} color={Colors.accent} />
-          <Text style={styles.newChatLabel}>Novo chat</Text>
-        </TouchableOpacity>
-
         {/* Navegação */}
         {NAV_ITEMS.map((item) => {
           const isActive = item.label === activeScreen;
@@ -123,7 +117,6 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
         {/* Favoritos */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>FAVORITOS</Text>
-          <MaterialCommunityIcons name="star" size={11} color={Colors.accent} />
         </View>
         {favoriteVehicles.length === 0 ? (
           <Text style={styles.emptyFavorites}>Nenhum favorito ainda</Text>
@@ -155,17 +148,20 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
           ))}
         </ScrollView>
 
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Histórico </Text>
+        
         {/* Rodapé — perfil */}
-        <TouchableOpacity style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>M</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>Mariana Dourado</Text>
-            <Text style={styles.profileLogin}>Faça login</Text>
-          </View>
-          <Feather name="chevron-right" size={16} color={Colors.textMuted} />
-        </TouchableOpacity>
+        <View style={styles.profileRow}>
+          <TouchableOpacity style={styles.profilePill}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarLetter}>M</Text>
+            </View>
+            <Text style={styles.profilePillName} numberOfLines={1}>Mariana</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.newChatIcon} onPress={() => handleNavPress('Início')}>
+            <MaterialCommunityIcons name="message-plus" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -304,11 +300,36 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     marginTop: 12,
+  },
+  newChatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.action,
+  },
+  profilePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 16,
+    paddingLeft: 4,
+    paddingVertical: 4,
+    borderRadius: Colors.radiusPill,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  profilePillName: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Sora_500Medium',
+    maxWidth: 120,
   },
   avatar: {
     width: 36,

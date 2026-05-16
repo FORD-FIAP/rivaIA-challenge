@@ -14,14 +14,19 @@ import { NavigationProvider, useNavigation } from './src/context/NavigationConte
 import { FavoritesProvider } from './src/context/FavoritesContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
+import { Sidebar } from './src/components/home/Sidebar';
 
 const DESKTOP_BREAKPOINT = 600;
 
 function AppScreens() {
-  const { activeScreen } = useNavigation();
+  const { activeScreen, sidebarOpen, closeSidebar } = useNavigation();
 
-  if (activeScreen === 'Veículos') return <VeiculosScreen />;
-  return <HomeScreen />;
+  return (
+    <>
+      {activeScreen === 'Veículos' ? <VeiculosScreen /> : <HomeScreen />}
+      <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
+    </>
+  );
 }
 
 export default function App() {
