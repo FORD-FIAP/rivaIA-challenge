@@ -25,12 +25,12 @@ function applyFilters(search: string, filters: FilterState): Vehicle[] {
   return ALL_VEHICLES.filter((v) => {
     if (search.trim()) {
       const q = search.toLowerCase();
-      if (!v.name.toLowerCase().includes(q) && !v.brand.toLowerCase().includes(q)) return false;
+      if (!v.versao.toLowerCase().includes(q) && !v.marca.toLowerCase().includes(q)) return false;
     }
-    if (filters.brands.length && !filters.brands.includes(v.brand)) return false;
-    if (filters.models.length && !filters.models.includes(v.model)) return false;
-    if (filters.categories.length && !filters.categories.includes(v.category)) return false;
-    if (filters.years.length && !filters.years.includes(v.year)) return false;
+    if (filters.brands.length && !filters.brands.includes(v.marca)) return false;
+    if (filters.models.length && !filters.models.includes(v.modelo)) return false;
+    if (filters.categories.length && !filters.categories.includes(v.categoria)) return false;
+    if (filters.years.length && !filters.years.includes(v.ano)) return false;
     return true;
   });
 }
