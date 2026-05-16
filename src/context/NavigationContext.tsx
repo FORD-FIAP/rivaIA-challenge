@@ -8,6 +8,9 @@ interface NavigationContextValue {
   pendingVehicleId: string | null;
   openVehicle: (vehicleId: string) => void;
   clearPendingVehicle: () => void;
+  sidebarOpen: boolean;
+  openSidebar: () => void;
+  closeSidebar: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -15,6 +18,7 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('Início');
   const [pendingVehicleId, setPendingVehicleId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   function openVehicle(vehicleId: string) {
     setPendingVehicleId(vehicleId);
@@ -26,7 +30,18 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <NavigationContext.Provider value={{ activeScreen, navigate: setActiveScreen, pendingVehicleId, openVehicle, clearPendingVehicle }}>
+    <NavigationContext.Provider
+      value={{
+        activeScreen,
+        navigate: setActiveScreen,
+        pendingVehicleId,
+        openVehicle,
+        clearPendingVehicle,
+        sidebarOpen,
+        openSidebar: () => setSidebarOpen(true),
+        closeSidebar: () => setSidebarOpen(false),
+      }}
+    >
       {children}
     </NavigationContext.Provider>
   );

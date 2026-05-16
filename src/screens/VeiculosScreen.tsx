@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { Sidebar } from '../components/home/Sidebar';
 import { RivaOrb } from '../components/home/RivaOrb';
 import { VehicleResultCard } from '../components/veiculos/VehicleResultCard';
 import { FilterModal, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterModal';
@@ -37,12 +36,11 @@ function applyFilters(search: string, filters: FilterState): Vehicle[] {
 }
 
 export function VeiculosScreen() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { openSidebar, pendingVehicleId, clearPendingVehicle } = useNavigation();
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [search, setSearch] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
-  const { pendingVehicleId, clearPendingVehicle } = useNavigation();
 
   useEffect(() => {
     if (pendingVehicleId) {
@@ -74,7 +72,7 @@ export function VeiculosScreen() {
           <Text style={styles.headerTitle}>Veículos</Text>
           <Text style={styles.headerSubtitle}>Pesquise ou filtre</Text>
         </View>
-        <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
+        <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
           <Feather name="menu" size={18} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -163,10 +161,6 @@ export function VeiculosScreen() {
         onClose={() => setSelectedVehicle(null)}
       />
 
-      <Sidebar
-        visible={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
     </SafeAreaView>
   );
 }
