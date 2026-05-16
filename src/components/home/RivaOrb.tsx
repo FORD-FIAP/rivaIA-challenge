@@ -28,22 +28,22 @@ export function RivaOrb() {
 
 const styles = StyleSheet.create({
   container: {
-    width: 88,
-    height: 88,
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
   glow: {
     position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(0,157,221,0.25)',
   },
   orb: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     /** Aproximação do gradiente radial: centro claro (#6FD7FF) → escuro (#0F4571) */
     backgroundColor: '#009DDD',
     shadowColor: '#009DDD',
@@ -54,11 +54,11 @@ const styles = StyleSheet.create({
   },
   shine: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: 'rgba(255,255,255,0.28)',
-    top: 14,
-    left: 18,
+    top: 9,
+    left: 11,
   },
 });
