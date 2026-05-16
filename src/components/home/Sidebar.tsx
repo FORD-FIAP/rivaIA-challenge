@@ -129,7 +129,7 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
             >
               <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
               <Text style={styles.favoriteTitle} numberOfLines={1}>
-                {v.name}
+                {v.versao}
               </Text>
             </TouchableOpacity>
           ))

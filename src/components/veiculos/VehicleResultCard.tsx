@@ -9,11 +9,9 @@ interface VehicleResultCardProps {
   onPress: () => void;
 }
 
-function formatPrice(value: number): string {
-  return `R$ ${value.toLocaleString('pt-BR')}`;
-}
-
 export function VehicleResultCard({ vehicle, onPress }: VehicleResultCardProps) {
+  const motor = vehicle.motorizacao_desempenho;
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.85}>
       {/* Área da imagem */}
@@ -23,21 +21,21 @@ export function VehicleResultCard({ vehicle, onPress }: VehicleResultCardProps) 
 
       {/* Informações */}
       <View style={styles.info}>
-        <Text style={styles.brandYear}>{vehicle.brand} · {vehicle.year}</Text>
+        <Text style={styles.brandYear}>{vehicle.marca} · {vehicle.ano}</Text>
 
-        <Text style={styles.name}>{vehicle.name}</Text>
-        <Text style={styles.engine}>{vehicle.engine}</Text>
+        <Text style={styles.name}>{vehicle.versao}</Text>
+        <Text style={styles.engine}>{motor?.motor}</Text>
 
         <View style={styles.row}>
-          <Text style={styles.price}>{formatPrice(vehicle.price)}</Text>
+          <Text style={styles.price}>{vehicle.preco}</Text>
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Feather name="zap" size={10} color={Colors.textMuted} />
-              <Text style={styles.statText}>{vehicle.power} cv</Text>
+              <Text style={styles.statText}>{motor?.potencia} cv</Text>
             </View>
             <View style={styles.stat}>
               <MaterialCommunityIcons name="water-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.statText}>{vehicle.consumption} km/l</Text>
+              <Text style={styles.statText}>{motor?.combustivel}</Text>
             </View>
           </View>
         </View>

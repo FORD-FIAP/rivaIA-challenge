@@ -29,14 +29,8 @@ export const EMPTY_FILTERS: FilterState = {
 
 const ALL_VEHICLES = [featuredVehicle, ...vehicles];
 
-const ALL_BRANDS = [...new Set(ALL_VEHICLES.map((v) => v.brand))];
-const ALL_YEARS   = [...new Set(ALL_VEHICLES.map((v) => v.year))].sort((a, b) => b - a);
-const ALL_CATEGORIES: VehicleCategory[] = [
-  'Picape',
-  'Sedan',
-  'SUV',
-  'Esportivos',
-];
+const ALL_BRANDS = [...new Set(ALL_VEHICLES.map((v) => v.marca))];
+const ALL_YEARS   = [...new Set(ALL_VEHICLES.map((v) => v.ano))].sort((a, b) => b - a);
 
 interface FilterModalProps {
   visible: boolean;
@@ -67,9 +61,17 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
     ]).start();
   }, [visible]);
 
-  const availableModels = pending.brands.length > 0
-    ? [...new Set(ALL_VEHICLES.filter((v) => pending.brands.includes(v.brand)).map((v) => v.model))]
-    : [...new Set(ALL_VEHICLES.map((v) => v.model))];
+  const filteredByBrand = pending.brands.length > 0
+    ? ALL_VEHICLES.filter((v) => pending.brands.includes(v.marca))
+    : ALL_VEHICLES;
+
+  const availableCategories = [...new Set(filteredByBrand.map((v) => v.categoria))] as VehicleCategory[];
+
+  const filteredByBrandAndCategory = pending.categories.length > 0
+    ? filteredByBrand.filter((v) => pending.categories.includes(v.categoria))
+    : filteredByBrand;
+
+  const availableModels = [...new Set(filteredByBrandAndCategory.map((v) => v.modelo))];
 
   function toggle<T>(list: T[], value: T): T[] {
     return list.includes(value) ? list.filter((i) => i !== value) : [...list, value];
@@ -77,12 +79,10 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
 
   function toggleBrand(brand: string) {
     const next = toggle(pending.brands, brand);
-    const validModels = next.length > 0
-      ? pending.models.filter((m) =>
-          ALL_VEHICLES.some((v) => next.includes(v.brand) && v.model === m)
-        )
-      : pending.models;
-    setPending({ ...pending, brands: next, models: validModels });
+    const filtered = next.length > 0 ? ALL_VEHICLES.filter((v) => next.includes(v.marca)) : ALL_VEHICLES;
+    const validCategories = pending.categories.filter((c) => filtered.some((v) => v.categoria === c));
+    const validModels = pending.models.filter((m) => filtered.some((v) => v.modelo === m));
+    setPending({ ...pending, brands: next, categories: validCategories, models: validModels });
   }
 
   const totalSelected =
@@ -118,6 +118,17 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
             ))}
           </FilterSection>
 
+          <FilterSection label="CATEGORIA">
+            {availableCategories.map((cat) => (
+              <Chip
+                key={cat}
+                label={cat}
+                active={pending.categories.includes(cat)}
+                onPress={() => setPending({ ...pending, categories: toggle(pending.categories, cat) })}
+              />
+            ))}
+          </FilterSection>
+
           <FilterSection label="MODELO">
             {availableModels.map((model) => (
               <Chip
@@ -128,29 +139,6 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
               />
             ))}
           </FilterSection>
-
-          <FilterSection label="CATEGORIA">
-            {ALL_CATEGORIES.map((cat) => (
-              <Chip
-                key={cat}
-                label={cat}
-                active={pending.categories.includes(cat)}
-                onPress={() => setPending({ ...pending, categories: toggle(pending.categories, cat) })}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection label="ANO">
-            {ALL_YEARS.map((year) => (
-              <Chip
-                key={year}
-                label={String(year)}
-                active={pending.years.includes(year)}
-                onPress={() => setPending({ ...pending, years: toggle(pending.years, year) })}
-              />
-            ))}
-          </FilterSection>
-
         </ScrollView>
 
         {/* Botões */}

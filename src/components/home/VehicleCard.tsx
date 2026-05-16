@@ -10,37 +10,34 @@ interface VehicleCardProps {
   onPress: () => void;
 }
 
-/** Formata preço para o padrão brasileiro: R$ 239.900 */
-function formatPrice(value: number): string {
-  return `R$ ${value.toLocaleString('pt-BR')}`;
-}
-
 export function VehicleCard({ vehicle, onPress }: VehicleCardProps) {
+  const motor = vehicle.motorizacao_desempenho;
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       {/* Placeholder ilustrativo — substitui imagem até ter assets reais */}
       <View style={styles.iconWrapper}>
-        <Text style={styles.brand}>{vehicle.brand}</Text>
+        <Text style={styles.brand}>{vehicle.marca}</Text>
         <MaterialCommunityIcons name="truck" size={40} color={Colors.action} style={styles.truckIcon} />
       </View>
 
       {/* Nome — 2 linhas máximo para manter altura igual */}
-      <Text style={styles.name} numberOfLines={2}>{vehicle.name}</Text>
+      <Text style={styles.name} numberOfLines={2}>{vehicle.versao}</Text>
 
       <Text style={styles.engineLine} numberOfLines={1}>
-        {vehicle.engine} · {vehicle.year}
+        {motor?.motor} · {vehicle.ano}
       </Text>
 
-      <Text style={styles.price}>{formatPrice(vehicle.price)}</Text>
+      <Text style={styles.price}>{vehicle.preco}</Text>
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Feather name="zap" size={10} color={Colors.accent} />
-          <Text style={styles.statText}>{vehicle.power} cv</Text>
+          <Text style={styles.statText}>{motor?.potencia} cv</Text>
         </View>
         <View style={styles.stat}>
           <MaterialCommunityIcons name="water-outline" size={11} color={Colors.accent} />
-          <Text style={styles.statText}>{vehicle.consumption} km/l</Text>
+          <Text style={styles.statText}>{motor?.combustivel}</Text>
         </View>
       </View>
     </TouchableOpacity>
