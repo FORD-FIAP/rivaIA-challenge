@@ -2,7 +2,7 @@ import { Vehicle } from '../../../types/vehicle';
 
 export const mitsubishiPicapes: Vehicle[] = [
   {
-    id: '5',
+    id: '7',
     marca: 'MITSUBISHI',
     categoria: 'Picape',
     modelo: 'Triton',

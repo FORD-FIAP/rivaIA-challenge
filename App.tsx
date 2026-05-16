@@ -14,6 +14,7 @@ import { NavigationProvider, useNavigation } from './src/context/NavigationConte
 import { FavoritesProvider } from './src/context/FavoritesContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
+import { CompararScreen } from './src/screens/CompararScreen';
 import { Sidebar } from './src/components/home/Sidebar';
 
 const DESKTOP_BREAKPOINT = 600;
@@ -23,7 +24,13 @@ function AppScreens() {
 
   return (
     <>
-      {activeScreen === 'Veículos' ? <VeiculosScreen /> : <HomeScreen />}
+      {activeScreen === 'Veículos' ? (
+        <VeiculosScreen />
+      ) : activeScreen === 'Comparar' ? (
+        <CompararScreen />
+      ) : (
+        <HomeScreen />
+      )}
       <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
     </>
   );
