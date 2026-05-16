@@ -26,8 +26,8 @@ function formatPrice(value: number): string {
 const SCORE_LABELS: { key: keyof NonNullable<Vehicle['scores']>; label: string }[] = [
   { key: 'performance', label: 'Performance' },
   { key: 'conforto',    label: 'Conforto'    },
-  { key: 'economia',    label: 'Economia'    },
   { key: 'offRoad',     label: 'Off-road'    },
+  { key: 'economia',    label: 'Economia'    },
   { key: 'tecnologia',  label: 'Tecnologia'  },
   { key: 'seguranca',   label: 'Segurança'   },
 ];
@@ -58,6 +58,12 @@ export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps
 
   if (!vehicle) return null;
 
+  const motor = vehicle.motorizacao_desempenho;
+  const cap = vehicle.capacidade;
+  const dim = vehicle.dimensoes;
+  const off = vehicle.off_road;
+  const seg = vehicle.tecnologia_seguranca;
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       {/* Backdrop */}
@@ -70,8 +76,8 @@ export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps
         {/* Cabeçalho fixo */}
         <View style={styles.sheetHeader}>
           <View style={styles.sheetHeaderLeft}>
-            <Text style={styles.sheetBrandYear}>{vehicle.brand} · {vehicle.year}</Text>
-            <Text style={styles.sheetName}>{vehicle.name}</Text>
+            <Text style={styles.sheetBrandYear}>{vehicle.marca} · {vehicle.ano}</Text>
+            <Text style={styles.sheetName}>{vehicle.versao}</Text>
           </View>
           <View style={styles.sheetHeaderActions}>
             <TouchableOpacity style={styles.iconButton} onPress={() => toggle(vehicle!.id)}>
@@ -90,77 +96,118 @@ export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
           {/* Imagem */}
           <View style={styles.imageArea}>
-            <Text style={styles.imageBrand}>{vehicle.brand}</Text>
+            <Text style={styles.imageBrand}>{vehicle.marca}</Text>
             <MaterialCommunityIcons name="truck" size={100} color={Colors.action} style={styles.truckIcon} />
           </View>
 
           {/* Especificações */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>ESPECIFICAÇÕES</Text>
-            <View style={styles.specsGrid}>
-              <SpecBox label="POTÊNCIA" value={`${vehicle.power}`} unit="cv" />
-              <SpecBox label="TORQUE" value={`${vehicle.torque}`} unit="Nm" />
-              {vehicle.acceleration != null && (
-                <SpecBox label="0-100 KM/H" value={`${vehicle.acceleration}`} unit="s" />
-              )}
-              <SpecBox label="CONSUMO" value={`${vehicle.consumption}`} unit="km/l" />
+          {motor && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>ESPECIFICAÇÕES</Text>
+              <View style={styles.specsGrid}>
+                <SpecBox label="POTÊNCIA" value={motor.potencia} unit="cv" />
+                <SpecBox label="TORQUE" value={motor.torque} unit="Nm" />
+                <SpecBox label="0-100 KM/H" value={motor.aceleracao.replace(/.*?(\d[\d,]+s)$/, '$1')} unit="" />
+                <SpecBox label="COMBUSTÍVEL" value={motor.combustivel} unit="" />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Score RIVA */}
           {vehicle.scores && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>SCORE RIVA</Text>
-              {SCORE_LABELS.map(({ key, label }) => (
-                <ScoreRow key={key} label={label} value={vehicle.scores![key]} />
-              ))}
+              {SCORE_LABELS.map(({ key, label }) =>
+                vehicle.scores![key] != null ? (
+                  <ScoreRow key={key} label={label} value={vehicle.scores![key]!} />
+                ) : null
+              )}
             </View>
           )}
 
-          {/* Ficha Técnica - Picape*/}
-          {vehicle.specs && (
-            <View style={[styles.section, styles.lastSection]}>
-              <Text style={styles.sectionLabel}>MOTORIZAÇÃO E DESEMPENHO</Text>
-              <View style={styles.specsList}>
-                <SpecLine label="Motor" value={vehicle.engine} />
-                {/* <SpecLine label="Potência" value={} />
-                <SpecLine label="Torque" value={} /> */}
-                <SpecLine label="Câmbio" value={vehicle.specs.cambio} />
-                <SpecLine label="Tração" value={vehicle.specs.tracao} />
-                {/* <SpecLine label="Tanque" value={} /> */}
-                <SpecLine label="Combustível" value={vehicle.specs.combustivel} />
-              </View>
-              
-              {/*Adicionar depois +informações para ficha técnica*/}
-              <Text style={styles.sectionLabel}>CAPACIDADE DE CARGA E REBOQUE</Text>
-              <View style={styles.specsList}>
-                {/* <SpecLine label="Capacidade de Carga" value={} /> */}
-                {/* <SpecLine label="Capacidade de Reboque" value={} /> */}
-              </View>
+          {/* Ficha Técnica */}
+          <View style={[styles.section, styles.lastSection]}>
+            {/* Motorização */}
+            {motor && (
+              <>
+                <Text style={styles.sectionLabel}>MOTORIZAÇÃO E DESEMPENHO</Text>
+                <View style={styles.specsList}>
+                  <SpecLine label="Motor" value={motor.motor} />
+                  <SpecLine label="Cilindros" value={motor.cilindros} />
+                  <SpecLine label="Câmbio" value={motor.cambio} />
+                  <SpecLine label="Tanque" value={motor.tanque} />
+                  <SpecLine label="Combustível" value={motor.combustivel} />
+                  <SpecLine label="Vel. máxima" value={motor.velocidade_max} />
+                  <SpecLine label="Aceleração" value={motor.aceleracao} />
+                </View>
+              </>
+            )}
 
-              <Text style={styles.sectionLabel}>DIMENSÕES</Text>
-              <View style={styles.specsList}>
-                {/* <SpecLine label="Comprimento" value={} /> */}
-                {/* <SpecLine label="Largura" value={} /> */}
-                {/* <SpecLine label="Altura" value={} /> */}
-                {/* <SpecLine label="Entre eixos" value={} /> */}
-                {/* <SpecLine label="Classificação" value={} /> */} {/* Qual é o tamanho da picape */}
-              </View>
+            {/* Capacidade */}
+            {cap && (
+              <>
+                <Text style={[styles.sectionLabel, styles.sectionLabelTop]}>CAPACIDADE DE CARGA E REBOQUE</Text>
+                <View style={styles.specsList}>
+                  <SpecLine label="Caçamba" value={cap.capacidade_cacamba} />
+                  <SpecLine label="Reboque" value={cap.capacidade_reboque} />
+                </View>
+              </>
+            )}
 
-              <Text style={styles.sectionLabel}>OFF-ROAD</Text>
-              <View style={styles.specsList}>
-                {/* <SpecLine label="" value={} /> */}
-                {/* <SpecLine label="" value={} /> */}
-              </View>
+            {/* Dimensões */}
+            {dim && (
+              <>
+                <Text style={[styles.sectionLabel, styles.sectionLabelTop]}>DIMENSÕES</Text>
+                <View style={styles.specsList}>
+                  <SpecLine label="Comprimento" value={`${dim.comprimento} mm`} />
+                  <SpecLine label="Largura" value={`${dim.largura} mm`} />
+                  <SpecLine label="Altura" value={`${dim.altura} mm`} />
+                  <SpecLine label="Entre eixos" value={`${dim.entre_eixos} mm`} />
+                  <SpecLine label="Vão livre" value={dim.vao_livre} />
+                </View>
+              </>
+            )}
 
-              <Text style={styles.sectionLabel}>EQUIPAMENTOS DE SEGURANÇA</Text>
-              <View style={styles.specsList}>
-                {/* <SpecLine label="" value={} /> */}
-                {/* <SpecLine label="" value={} /> */}
-              </View>
+            {/* Off-road */}
+            {off && (
+              <>
+                <Text style={[styles.sectionLabel, styles.sectionLabelTop]}>OFF-ROAD</Text>
+                <View style={styles.specsList}>
+                  <SpecLine label="Modos de tração" value={off.modos_tracao} />
+                  <SpecLine label="Diferencial bloqueável" value={off.diferencial_traseiro_bloqueavel} />
+                  <SpecLine label="Ângulo de ataque" value={`${off.angulo_ataque}°`} />
+                  <SpecLine label="Ângulo de saída" value={`${off.angulo_saida}°`} />
+                  <SpecLine label="Ângulo de rampa" value={`${off.angulo_rampa}°`} />
+                  <SpecLine label="Prof. na água" value={`${off.profundidade_agua} mm`} />
+                  <SpecLine label="Suspensão" value={off.suspensao} />
+                  <SpecLine label="Controle de descida" value={off.controle_descida} />
+                </View>
+              </>
+            )}
 
-            </View>
-          )}
+            {/* Tecnologia e Segurança */}
+            {seg && (
+              <>
+                <Text style={[styles.sectionLabel, styles.sectionLabelTop]}>TECNOLOGIA E SEGURANÇA</Text>
+                <View style={styles.specsList}>
+                  <SpecLine label="Airbags" value={`${seg.airbags} airbags`} />
+                  <SpecLine label="Freios" value={seg.freio_abs} />
+                  <SpecLine label="Estabilidade" value={seg.controle_estabilidade} />
+                  <SpecLine label="Frenagem aut." value={seg.frenagem_automatica} />
+                  <SpecLine label="Ponto cego" value={seg.alerta_ponto_cego} />
+                  <SpecLine label="Cruzeiro" value={seg.controle_cruzeiro} />
+                  <SpecLine label="Multimídia" value={seg.central_multimida} />
+                  <SpecLine label="Câmera 360°" value={seg.camera_360} />
+                  <SpecLine label="Assist. de faixa" value={seg.assistente_faixa} />
+                  <SpecLine label="Monitor. pneus" value={seg.monitoracao_pneus} />
+                  <SpecLine label="Teto solar" value={seg.teto_solar} />
+                  <SpecLine label="Estacionamento" value={seg.sensor_estacionamento} />
+                  <SpecLine label="Carregador Wi." value={seg.carregador_wireless} />
+                  <SpecLine label="Banco" value={seg.ajuste_banco} />
+                </View>
+              </>
+            )}
+          </View>
         </ScrollView>
 
         {/* Botões fixos no rodapé */}
@@ -307,6 +354,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     fontFamily: 'Sora_600SemiBold',
     marginBottom: 14,
+  },
+  sectionLabelTop: {
+    marginTop: 24,
   },
   specsGrid: {
     flexDirection: 'row',

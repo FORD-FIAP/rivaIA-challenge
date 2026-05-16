@@ -10,16 +10,13 @@ interface FeaturedCardProps {
   onPress: () => void;
 }
 
-/** Formata preço para o padrão brasileiro: R$ 459.900 */
-function formatPrice(value: number): string {
-  return `R$ ${value.toLocaleString('pt-BR')}`;
-}
-
 export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
+  const motor = vehicle.motorizacao_desempenho;
+
   return (
     <View style={styles.container}>
       {/* Label da marca */}
-      <Text style={styles.brand}>{vehicle.brand}</Text>
+      <Text style={styles.brand}>{vehicle.marca}</Text>
 
       {/* Placeholder ilustrativo — substitui imagem até ter assets reais */}
       <View style={styles.imageWrapper}>
@@ -30,30 +27,30 @@ export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
 
       {/* Identificação */}
       <Text style={styles.yearBrand}>
-        {vehicle.brand} · {vehicle.year}
+        {vehicle.marca} · {vehicle.ano}
       </Text>
-      <Text style={styles.name}>{vehicle.name}</Text>
-      <Text style={styles.engine}>{vehicle.engine}</Text>
+      <Text style={styles.name}>{vehicle.versao}</Text>
+      <Text style={styles.engine}>{motor?.motor}</Text>
 
       {/* Specs */}
       <View style={styles.specsRow}>
         <View style={styles.specItem}>
-          <Text style={styles.specValue}>{vehicle.power}cv</Text>
+          <Text style={styles.specValue}>{motor?.potencia}cv</Text>
           <Text style={styles.specLabel}>POTÊNCIA</Text>
         </View>
         <View style={styles.specItem}>
-          <Text style={styles.specValue}>{vehicle.torque}Nm</Text>
+          <Text style={styles.specValue}>{motor?.torque}Nm</Text>
           <Text style={styles.specLabel}>TORQUE</Text>
         </View>
         <View style={styles.specItem}>
-          <Text style={styles.specValue}>{vehicle.consumption}km/l</Text>
-          <Text style={styles.specLabel}>CONSUMO</Text>
+          <Text style={styles.specValue}>{motor?.combustivel}</Text>
+          <Text style={styles.specLabel}>COMBUSTÍVEL</Text>
         </View>
       </View>
 
       {/* Rodapé — preço e link */}
       <View style={styles.footer}>
-        <Text style={styles.price}>{formatPrice(vehicle.price)}</Text>
+        <Text style={styles.price}>{vehicle.preco}</Text>
         <TouchableOpacity style={styles.detailsRow} onPress={onPress}>
           <Text style={styles.detailsLink}>Ver detalhes</Text>
           <Feather name="arrow-right" size={13} color={Colors.accent} />
