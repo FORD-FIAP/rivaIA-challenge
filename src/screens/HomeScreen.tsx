@@ -20,11 +20,13 @@ import { VehicleCard } from '../components/home/VehicleCard';
 import { Colors } from '../theme/colors';
 import { featuredVehicle, vehicles } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
+import { VehicleDetailSheet } from '../components/veiculos/VehicleDetailSheet';
 
 export function HomeScreen() {
   const { height: windowHeight } = useWindowDimensions();
-  const { openSidebar } = useNavigation();
+  const { openSidebar, navigate } = useNavigation();
   const [vehicleList, setVehicleList] = useState<Vehicle[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [headerHeight, setHeaderHeight] = useState(80);
   const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -50,8 +52,7 @@ export function HomeScreen() {
   }
 
   function handleVehiclePress(vehicle: Vehicle) {
-    // TODO: navegar para tela de detalhes
-    console.log('Veículo selecionado:', vehicle.name);
+    setSelectedVehicle(vehicle);
   }
 
   function scrollToVehicles() {
@@ -120,7 +121,7 @@ export function HomeScreen() {
           {/* Grid */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Veículos mais analisados</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigate('Veículos')}>
               <Text style={styles.seeAll}>Ver tudo</Text>
             </TouchableOpacity>
           </View>
@@ -137,6 +138,11 @@ export function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <VehicleDetailSheet
+        vehicle={selectedVehicle}
+        onClose={() => setSelectedVehicle(null)}
+      />
 
     </SafeAreaView>
   );
