@@ -11,15 +11,6 @@ interface HeaderProps {
 export function Header({ onMenuPress }: HeaderProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.iconButton}>
-        <Feather name="clock" size={20} color={Colors.textMuted} />
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.titleRow}>
-        <Text style={styles.title}>RIVA</Text>
-        <Feather size={14} color={Colors.textMuted} />
-      </TouchableOpacity>
-
       <TouchableOpacity style={styles.iconButton} onPress={onMenuPress}>
         <Feather name="menu" size={20} color={Colors.textMuted} />
       </TouchableOpacity>
@@ -31,9 +22,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 20,
     backgroundColor: Colors.bg,
   },
   iconButton: {
@@ -41,17 +32,5 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-    fontFamily: 'Sora_600SemiBold',
-  },
+  }
 });

@@ -10,9 +10,31 @@ import {
   Sora_600SemiBold,
   Sora_700Bold,
 } from '@expo-google-fonts/sora';
+import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
+import { FavoritesProvider } from './src/context/FavoritesContext';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { VeiculosScreen } from './src/screens/VeiculosScreen';
+import { CompararScreen } from './src/screens/CompararScreen';
+import { Sidebar } from './src/components/home/Sidebar';
 
 const DESKTOP_BREAKPOINT = 600;
+
+function AppScreens() {
+  const { activeScreen, sidebarOpen, closeSidebar } = useNavigation();
+
+  return (
+    <>
+      {activeScreen === 'Veículos' ? (
+        <VeiculosScreen />
+      ) : activeScreen === 'Comparar' ? (
+        <CompararScreen />
+      ) : (
+        <HomeScreen />
+      )}
+      <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
+    </>
+  );
+}
 
 export default function App() {
   const { width: windowWidth } = useWindowDimensions();
@@ -37,16 +59,20 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      {showDesktopFrame ? (
-        <View style={styles.webContainer}>
-          <View style={styles.phoneFrame}>
-            <HomeScreen />
-          </View>
-        </View>
-      ) : (
-        <HomeScreen />
-      )}
+      <NavigationProvider>
+        <FavoritesProvider>
+          <StatusBar style="light" />
+          {showDesktopFrame ? (
+            <View style={styles.webContainer}>
+              <View style={styles.phoneFrame}>
+                <AppScreens />
+              </View>
+            </View>
+          ) : (
+            <AppScreens />
+          )}
+        </FavoritesProvider>
+      </NavigationProvider>
     </SafeAreaProvider>
   );
 }

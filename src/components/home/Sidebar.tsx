@@ -8,19 +8,24 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
+import { useNavigation, AppScreen } from '../../context/NavigationContext';
+import { useFavoritesContext } from '../../context/FavoritesContext';
+import { vehicles, featuredVehicle } from '../../mock/vehicles';
+import { Vehicle } from '../../types/vehicle';
+
+const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
 interface SidebarProps {
   visible: boolean;
   onClose: () => void;
-  activeScreen?: string;
 }
 
-const NAV_ITEMS = [
-  { label: 'Início',   icon: 'home'         as const },
-  { label: 'Veículos', icon: 'truck'         as const },
-  { label: 'Comparar', icon: 'bar-chart-2'   as const },
+const NAV_ITEMS: { label: AppScreen; icon: React.ComponentProps<typeof Feather>['name'] }[] = [
+  { label: 'Início',   icon: 'home'        },
+  { label: 'Veículos', icon: 'truck'       },
+  { label: 'Comparar', icon: 'bar-chart-2' },
 ];
 
 const RECENT_CONVERSATIONS = [
@@ -30,12 +35,15 @@ const RECENT_CONVERSATIONS = [
   'Diferença entre Ranger XLT e Limited',
   'Tremor é confortável no asfalto?',
   'Vale upgrade do SYNC 4?',
+  'Melhores modelos de 2024 SUV para o Brasil',
 ];
 
-/** Distância off-screen (direita) quando fechada */
 const DRAWER_OFFSET = 400;
 
-export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarProps) {
+export function Sidebar({ visible, onClose }: SidebarProps) {
+  const { activeScreen, navigate, openVehicle } = useNavigation();
+  const { favorites } = useFavoritesContext();
+  const favoriteVehicles = ALL_VEHICLES.filter((v) => favorites.includes(v.id));
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,6 +61,10 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
       }),
     ]).start();
   }, [visible]);
+
+  function handleNavPress(screen: AppScreen) {
+    navigate(screen);
+  }
 
   return (
     <View
@@ -80,17 +92,15 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
           </TouchableOpacity>
         </View>
 
-        {/* Botão novo chat */}
-        <TouchableOpacity style={styles.newChatButton}>
-          <Feather name="plus" size={16} color={Colors.accent} />
-          <Text style={styles.newChatLabel}>Novo chat</Text>
-        </TouchableOpacity>
-
         {/* Navegação */}
         {NAV_ITEMS.map((item) => {
           const isActive = item.label === activeScreen;
           return (
-            <TouchableOpacity key={item.label} style={styles.navItem}>
+            <TouchableOpacity
+              key={item.label}
+              style={styles.navItem}
+              onPress={() => handleNavPress(item.label)}
+            >
               <Feather
                 name={item.icon}
                 size={16}
@@ -104,8 +114,29 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
           );
         })}
 
+        {/* Favoritos */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionLabel}>FAVORITOS</Text>
+        </View>
+        {favoriteVehicles.length === 0 ? (
+          <Text style={styles.emptyFavorites}>Nenhum favorito ainda</Text>
+        ) : (
+          favoriteVehicles.map((v) => (
+            <TouchableOpacity
+              key={v.id}
+              style={styles.favoriteItem}
+              onPress={() => { openVehicle(v.id); onClose(); }}
+            >
+              <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
+              <Text style={styles.favoriteTitle} numberOfLines={1}>
+                {v.versao}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+
         {/* Conversas recentes */}
-        <Text style={styles.sectionLabel}>CONVERSAS RECENTES</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>CONVERSAS RECENTES</Text>
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
           {RECENT_CONVERSATIONS.map((title) => (
             <TouchableOpacity key={title} style={styles.conversationItem}>
@@ -117,17 +148,20 @@ export function Sidebar({ visible, onClose, activeScreen = 'Início' }: SidebarP
           ))}
         </ScrollView>
 
+        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Histórico </Text>
+        
         {/* Rodapé — perfil */}
-        <TouchableOpacity style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>M</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>Mariana Dourado</Text>
-            <Text style={styles.profileLogin}>Faça login</Text>
-          </View>
-          <Feather name="chevron-right" size={16} color={Colors.textMuted} />
-        </TouchableOpacity>
+        <View style={styles.profileRow}>
+          <TouchableOpacity style={styles.profilePill}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarLetter}>M</Text>
+            </View>
+            <Text style={styles.profilePillName} numberOfLines={1}>Mariana</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.newChatIcon} onPress={() => handleNavPress('Início')}>
+            <MaterialCommunityIcons name="message-plus" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -219,14 +253,37 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: Colors.accent,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 20,
+    marginBottom: 8,
+  },
   sectionLabel: {
     color: Colors.textHint,
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 2,
-    marginTop: 20,
-    marginBottom: 8,
     fontFamily: 'Sora_600SemiBold',
+  },
+  emptyFavorites: {
+    color: Colors.textHint,
+    fontSize: 12,
+    fontFamily: 'Sora_400Regular',
+    paddingVertical: 4,
+  },
+  favoriteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 9,
+  },
+  favoriteTitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    flex: 1,
+    fontFamily: 'Sora_400Regular',
   },
   conversationItem: {
     flexDirection: 'row',
@@ -243,11 +300,36 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     marginTop: 12,
+  },
+  newChatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.action,
+  },
+  profilePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 16,
+    paddingLeft: 4,
+    paddingVertical: 4,
+    borderRadius: Colors.radiusPill,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  profilePillName: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Sora_500Medium',
+    maxWidth: 120,
   },
   avatar: {
     width: 36,

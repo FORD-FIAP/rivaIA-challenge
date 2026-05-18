@@ -12,19 +12,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/home/Header';
-import { Sidebar } from '../components/home/Sidebar';
 import { RivaOrb } from '../components/home/RivaOrb';
+import { useNavigation } from '../context/NavigationContext';
 import { ChatInput } from '../components/home/ChatInput';
 import { FeaturedCard } from '../components/home/FeaturedCard';
 import { VehicleCard } from '../components/home/VehicleCard';
 import { Colors } from '../theme/colors';
 import { featuredVehicle, vehicles } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
+import { VehicleDetailSheet } from '../components/veiculos/VehicleDetailSheet';
 
 export function HomeScreen() {
   const { height: windowHeight } = useWindowDimensions();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { openSidebar, navigate } = useNavigation();
   const [vehicleList, setVehicleList] = useState<Vehicle[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [headerHeight, setHeaderHeight] = useState(80);
   const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -50,8 +52,7 @@ export function HomeScreen() {
   }
 
   function handleVehiclePress(vehicle: Vehicle) {
-    // TODO: navegar para tela de detalhes
-    console.log('Veículo selecionado:', vehicle.name);
+    setSelectedVehicle(vehicle);
   }
 
   function scrollToVehicles() {
@@ -61,7 +62,7 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <Header onMenuPress={() => setSidebarOpen(true)} />
+        <Header onMenuPress={openSidebar} />
       </View>
 
       <ScrollView
@@ -72,13 +73,15 @@ export function HomeScreen() {
         {/* Hero — ocupa a tela toda abaixo do header */}
         <View style={[styles.hero, { height: heroHeight }]}>
 
-          {/* Greeting — centralizado verticalmente */}
+          {/* Greeting */}
           <View style={styles.greetingBlock}>
             <RivaOrb />
-            <Text style={styles.title}>
-              Olá, <Text style={styles.titleAccent}>Mariana</Text>.
-            </Text>
-            <Text style={styles.subtitle}>Como posso ajudar?</Text>
+            <View style={styles.greetingText}>
+              <Text style={styles.title}>
+                Olá, <Text style={styles.titleAccent}>Mariana</Text>!
+              </Text>
+              <Text style={styles.subtitle}>O que gostaria de ver hoje?</Text>
+            </View>
           </View>
 
           {/* Bloco inferior — input + botão flutuante */}
@@ -118,7 +121,7 @@ export function HomeScreen() {
           {/* Grid */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Veículos mais analisados</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigate('Veículos')}>
               <Text style={styles.seeAll}>Ver tudo</Text>
             </TouchableOpacity>
           </View>
@@ -136,12 +139,11 @@ export function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Sidebar renderizada por último para ficar acima de todo o conteúdo */}
-      <Sidebar
-        visible={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeScreen="Início"
+      <VehicleDetailSheet
+        vehicle={selectedVehicle}
+        onClose={() => setSelectedVehicle(null)}
       />
+
     </SafeAreaView>
   );
 }
@@ -159,20 +161,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 32,
+    paddingTop: 48,
+    paddingBottom: 96,
   },
   greetingBlock: {
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    justifyContent: 'center',
+    gap: 38,
+    marginTop: '18%',
+  },
+  greetingText: {
+    alignItems: 'center',
+    gap: 2,
   },
   title: {
     color: Colors.textPrimary,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     textAlign: 'center',
     fontFamily: 'Sora_700Bold',
   },
@@ -188,7 +193,7 @@ const styles = StyleSheet.create({
   },
   bottomBlock: {
     width: '100%',
-    gap: 16,
+    gap: 24,
     alignItems: 'center',
   },
   composerWrapper: {
