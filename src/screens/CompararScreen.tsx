@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
+import { useFavoritesContext } from '../context/FavoritesContext';
+import { useAuth } from '../context/AuthContext';
 import { vehicles, featuredVehicle } from '../mock/vehicles';
 import { Vehicle, VehicleScores } from '../types/vehicle';
 import { RadarChart } from '../components/comparar/RadarChart';
@@ -63,7 +65,9 @@ function topEntries(v: Vehicle, n: number, highest: boolean) {
 // ─── Tela principal ──────────────────────────────────────────────────────────
 
 export function CompararScreen() {
-  const { openSidebar } = useNavigation();
+  const { openSidebar, pendingComparisonIds, clearPendingComparison } = useNavigation();
+  const { isComparisonFavorite, toggleComparison } = useFavoritesContext();
+  const { isAuthenticated, requestLogin } = useAuth();
   const { width } = useWindowDimensions();
   const [slots, setSlots] = useState<[Vehicle | null, Vehicle | null]>([null, null]);
   const [pickingSlot, setPickingSlot] = useState<0 | 1 | null>(null);
@@ -79,6 +83,16 @@ export function CompararScreen() {
       setTimeout(() => scrollRef.current?.scrollTo({ y: 260, animated: true }), 100);
     }
   }, [bothSelected]);
+
+  useEffect(() => {
+    if (pendingComparisonIds) {
+      const [idA, idB] = pendingComparisonIds;
+      const a = ALL_VEHICLES.find((v) => v.id === idA) ?? null;
+      const b = ALL_VEHICLES.find((v) => v.id === idB) ?? null;
+      if (a && b) setSlots([a, b]);
+      clearPendingComparison();
+    }
+  }, [pendingComparisonIds]);
 
   function openPicker(index: 0 | 1) {
     setPickingSlot(index);
@@ -105,6 +119,13 @@ export function CompararScreen() {
 
   const vA = slots[0]!;
   const vB = slots[1]!;
+  const comparisonSaved = bothSelected && isAuthenticated && isComparisonFavorite(vA.id, vB.id);
+
+  function toggleSavedComparison() {
+    if (!bothSelected) return;
+    toggleComparison(vA.id, vB.id);
+  }
+
   const winner = bothSelected
     ? totalScore(vA) >= totalScore(vB)
       ? vA
@@ -119,9 +140,32 @@ export function CompararScreen() {
           <Text style={styles.headerTitle}>Comparar</Text>
           <Text style={styles.headerSubtitle}>Escolha até 2 modelos</Text>
         </View>
-        <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
-          <Feather name="menu" size={18} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {bothSelected && (
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => {
+                if (isAuthenticated) {
+                  toggleSavedComparison();
+                } else {
+                  requestLogin(
+                    { type: 'comparison', vehicleA: vA, vehicleB: vB },
+                    () => toggleComparison(vA.id, vB.id),
+                  );
+                }
+              }}
+            >
+              <MaterialCommunityIcons
+                name={comparisonSaved ? 'star' : 'star-outline'}
+                size={18}
+                color={comparisonSaved ? Colors.accent : Colors.textMuted}
+              />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
+            <Feather name="menu" size={18} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -597,6 +641,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Sora_400Regular',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   menuButton: {
     width: 38,
