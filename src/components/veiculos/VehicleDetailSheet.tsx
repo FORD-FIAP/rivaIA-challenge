@@ -13,6 +13,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 import { useFavoritesContext } from '../../context/FavoritesContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface VehicleDetailSheetProps {
   vehicle: Vehicle | null;
@@ -35,7 +36,8 @@ const SCORE_LABELS: { key: keyof NonNullable<Vehicle['scores']>; label: string }
 export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps) {
   const { height: screenHeight } = useWindowDimensions();
   const { isFavorite, toggle } = useFavoritesContext();
-  const favorited = vehicle ? isFavorite(vehicle.id) : false;
+  const { isAuthenticated, requestLogin } = useAuth();
+  const favorited = isAuthenticated && vehicle ? isFavorite(vehicle.id) : false;
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
@@ -80,7 +82,19 @@ export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps
             <Text style={styles.sheetName}>{vehicle.versao}</Text>
           </View>
           <View style={styles.sheetHeaderActions}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => toggle(vehicle!.id)}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                if (isAuthenticated) {
+                  toggle(vehicle!.id);
+                } else {
+                  requestLogin(
+                    { type: 'vehicle', vehicle: vehicle! },
+                    () => toggle(vehicle!.id),
+                  );
+                }
+              }}
+            >
               <MaterialCommunityIcons
                 name={favorited ? 'star' : 'star-outline'}
                 size={17}
