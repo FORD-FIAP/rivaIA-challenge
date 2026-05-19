@@ -5,12 +5,12 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 
-interface VehicleCardProps {
+interface VeiculoCardProps {
   vehicle: Vehicle;
   onPress: () => void;
 }
 
-export function VehicleCard({ vehicle, onPress }: VehicleCardProps) {
+export function VeiculoCard({ vehicle, onPress }: VeiculoCardProps) {
   const motor = vehicle.motorizacao_desempenho;
 
   return (

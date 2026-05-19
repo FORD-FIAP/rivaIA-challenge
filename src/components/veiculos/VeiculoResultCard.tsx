@@ -4,12 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
-interface VehicleResultCardProps {
+interface VeiculoResultCardProps {
   vehicle: Vehicle;
   onPress: () => void;
 }
 
-export function VehicleResultCard({ vehicle, onPress }: VehicleResultCardProps) {
+export function VeiculoResultCard({ vehicle, onPress }: VeiculoResultCardProps) {
   const motor = vehicle.motorizacao_desempenho;
 
   return (
