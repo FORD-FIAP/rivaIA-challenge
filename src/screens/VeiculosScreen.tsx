@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { RivaOrb } from '../components/home/RivaOrb';
-import { VehicleResultCard } from '../components/veiculos/VehicleResultCard';
+import { VeiculoResultCard } from '../components/veiculos/VeiculoResultCard';
 import { FilterModal, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterModal';
-import { VehicleDetailSheet } from '../components/veiculos/VehicleDetailSheet';
+import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 import { Colors } from '../theme/colors';
 import { vehicles, featuredVehicle } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
@@ -129,7 +129,7 @@ export function VeiculosScreen() {
               </View>
             ) : (
               results.map((vehicle) => (
-                <VehicleResultCard
+                <VeiculoResultCard
                   key={vehicle.id}
                   vehicle={vehicle}
                   onPress={() => setSelectedVehicle(vehicle)}
@@ -156,7 +156,7 @@ export function VeiculosScreen() {
         onClose={() => setFilterOpen(false)}
       />
 
-      <VehicleDetailSheet
+      <VeiculoFicha
         vehicle={selectedVehicle}
         onClose={() => setSelectedVehicle(null)}
       />

@@ -1,4 +1,5 @@
 /** Composer principal da Home — "Pergunte à RIVA..." */
+
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';

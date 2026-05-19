@@ -1,11 +1,5 @@
-/**
- * ChatThread — renderiza a conversa mockada da Home.
- *
- * Suporta três tipos de bolha:
- * - role 'user': bolha alinhada à direita.
- * - 'vehicle_info': ficha com intro, specs, modos, preço e card de YouTube.
- * - 'comparison': tabela comparativa, vereditos, lista de fontes e tip.
- */
+/* ChatThread — renderiza a conversa mockada da Home. */
+
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -14,8 +8,7 @@ import {
   ScrollView,
   Animated,
   TouchableOpacity,
-  Linking,
-} from 'react-native';
+  Linking, } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 import { RivaOrb } from './RivaOrb';
@@ -354,7 +347,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
   },
 
-  // Specs
+  // Especificações
   specsBlock: {
     backgroundColor: 'rgba(56,109,189,0.08)',
     borderRadius: Colors.radiusLg,

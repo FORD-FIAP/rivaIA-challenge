@@ -20,11 +20,11 @@ import { useChat } from '../context/ChatContext';
 import { ChatInput } from '../components/home/ChatInput';
 import { ChatThread } from '../components/home/ChatThread';
 import { FeaturedCard } from '../components/home/FeaturedCard';
-import { VehicleCard } from '../components/home/VehicleCard';
+import { VeiculoCard } from '../components/home/VeiculoCard';
 import { Colors } from '../theme/colors';
 import { featuredVehicle, vehicles } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
-import { VehicleDetailSheet } from '../components/veiculos/VehicleDetailSheet';
+import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 
 export function HomeScreen() {
   const { height: windowHeight } = useWindowDimensions();
@@ -230,7 +230,7 @@ export function HomeScreen() {
             <View style={[styles.grid, { marginBottom: 28 }]}>
               {favoriteVehicles.map((vehicle) => (
                 <View key={vehicle.id} style={styles.gridItem}>
-                  <VehicleCard
+                  <VeiculoCard
                     vehicle={vehicle}
                     onPress={() => handleVehiclePress(vehicle)}
                   />
@@ -250,7 +250,7 @@ export function HomeScreen() {
           <View style={styles.grid}>
             {vehicleList.map((vehicle) => (
               <View key={vehicle.id} style={styles.gridItem}>
-                <VehicleCard
+                <VeiculoCard
                   vehicle={vehicle}
                   onPress={() => handleVehiclePress(vehicle)}
                 />
@@ -261,7 +261,7 @@ export function HomeScreen() {
         )}
       </ScrollView>
 
-      <VehicleDetailSheet
+      <VeiculoFicha
         vehicle={selectedVehicle}
         onClose={() => setSelectedVehicle(null)}
       />
