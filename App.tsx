@@ -18,6 +18,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
 import { CompararScreen } from './src/screens/CompararScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
 import { Sidebar } from './src/components/home/Sidebar';
 
 const DESKTOP_BREAKPOINT = 600;
@@ -31,6 +32,8 @@ function AppScreens() {
         <VeiculosScreen />
       ) : activeScreen === 'Comparar' ? (
         <CompararScreen />
+      ) : activeScreen === 'Perfil' ? (
+        <ProfileScreen />
       ) : (
         <HomeScreen />
       )}
