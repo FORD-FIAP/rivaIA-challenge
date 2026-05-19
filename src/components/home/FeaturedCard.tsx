@@ -15,10 +15,10 @@ export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
 
   return (
     <View style={styles.container}>
-      {/* Label da marca */}
-      <Text style={styles.brand}>{vehicle.marca}</Text>
+      {/* Label da marca 
+      <Text style={styles.brand}>{vehicle.marca}</Text> */}
 
-      {/* Placeholder ilustrativo — substitui imagem até ter assets reais */}
+      {/* Imagem - implementar depois */}
       <View style={styles.imageWrapper}>
         <View style={styles.iconBg}>
           <MaterialCommunityIcons name="truck" size={72} color={Colors.action} style={styles.truckIcon} />
@@ -32,7 +32,7 @@ export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
       <Text style={styles.name}>{vehicle.versao}</Text>
       <Text style={styles.engine}>{motor?.motor}</Text>
 
-      {/* Specs */}
+      {/* Especificações */}
       <View style={styles.specsRow}>
         <View style={styles.specItem}>
           <Text style={styles.specValue}>{motor?.potencia}cv</Text>
