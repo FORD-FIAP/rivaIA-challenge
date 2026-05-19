@@ -127,7 +127,11 @@ export function HomeScreen() {
                 <Text style={styles.title}>
                   Olá{user ? <>, <Text style={styles.titleAccent}>{user.name}</Text></> : null}!
                 </Text>
-                <Text style={styles.subtitle}>O que gostaria de ver hoje?</Text>
+                <Text style={styles.subtitle}>
+                  {user && user.preferences && user.preferences.trim().length > 0
+                    ? `Vi que você curte ${user.preferences.trim()}. Quer ver opções nesse estilo?`
+                    : 'O que gostaria de ver hoje?'}
+                </Text>
               </View>
             </View>
 
