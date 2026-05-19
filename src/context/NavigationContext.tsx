@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type AppScreen = 'Início' | 'Veículos' | 'Comparar';
+export type AppScreen = 'Início' | 'Veículos' | 'Comparar' | 'Perfil';
 
 interface NavigationContextValue {
   activeScreen: AppScreen;

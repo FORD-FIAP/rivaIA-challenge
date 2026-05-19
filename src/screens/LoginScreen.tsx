@@ -17,10 +17,6 @@ import { RivaOrb } from '../components/home/RivaOrb';
 import { useAuth, AuthPromptContext } from '../context/AuthContext';
 import { Vehicle } from '../types/vehicle';
 
-function firstName(full: string): string {
-  return full.trim().split(/\s+/)[0] ?? '';
-}
-
 function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
@@ -101,7 +97,7 @@ export function LoginScreen() {
 
   function handleSubmit() {
     if (!formValid) return;
-    login({ name: firstName(name) });
+    login({ fullName: name, email });
     runPendingAction();
     closeLogin();
     setName(''); setEmail(''); setPassword(''); setAgreed(false);
@@ -119,7 +115,6 @@ export function LoginScreen() {
             <Feather name="x" size={18} color={Colors.textPrimary} />
             <Text style={styles.closeText}>Fechar</Text>
           </TouchableOpacity>
-          <Text style={styles.stepText}>PASSO 1 DE 1</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>

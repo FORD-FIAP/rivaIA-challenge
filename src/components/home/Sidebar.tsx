@@ -199,7 +199,10 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
               if (!isAuthenticated) {
                 onClose();
                 requestLogin({ type: 'login' });
+                return;
               }
+              navigate('Perfil');
+              onClose();
             }}
           >
             {isAuthenticated && user ? (
