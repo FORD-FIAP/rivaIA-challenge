@@ -15,7 +15,7 @@ import { Colors } from '../../theme/colors';
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { useAuth } from '../../context/AuthContext';
 
-interface VehicleDetailSheetProps {
+interface VeiculoFichaProps {
   vehicle: Vehicle | null;
   onClose: () => void;
 }
@@ -33,7 +33,7 @@ const SCORE_LABELS: { key: keyof NonNullable<Vehicle['scores']>; label: string }
   { key: 'seguranca',   label: 'Segurança'   },
 ];
 
-export function VehicleDetailSheet({ vehicle, onClose }: VehicleDetailSheetProps) {
+export function VeiculoFicha({ vehicle, onClose }: VeiculoFichaProps) {
   const { height: screenHeight } = useWindowDimensions();
   const { isFavorite, toggle } = useFavoritesContext();
   const { isAuthenticated, requestLogin } = useAuth();
