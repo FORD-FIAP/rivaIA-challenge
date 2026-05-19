@@ -12,6 +12,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 import { useNavigation, AppScreen } from '../../context/NavigationContext';
 import { useFavoritesContext } from '../../context/FavoritesContext';
+import { useAuth } from '../../context/AuthContext';
+import { useChat } from '../../context/ChatContext';
 import { vehicles, featuredVehicle } from '../../mock/vehicles';
 import { Vehicle } from '../../types/vehicle';
 
@@ -41,9 +43,22 @@ const RECENT_CONVERSATIONS = [
 const DRAWER_OFFSET = 400;
 
 export function Sidebar({ visible, onClose }: SidebarProps) {
-  const { activeScreen, navigate, openVehicle } = useNavigation();
-  const { favorites } = useFavoritesContext();
+  const { activeScreen, navigate, openVehicle, openComparison } = useNavigation();
+  const { favorites, comparisons } = useFavoritesContext();
+  const { user, isAuthenticated, requestLogin } = useAuth();
+  const { resetChat, isFavorited: chatFavorited, messages: chatMessages, toggleFavorite: toggleChatFavorite } = useChat();
+  const firstUserMessage = chatMessages.find((m) => m.role === 'user');
+  const chatPreview = firstUserMessage && firstUserMessage.role === 'user'
+    ? firstUserMessage.text
+    : 'Conversa com a RIVA';
   const favoriteVehicles = ALL_VEHICLES.filter((v) => favorites.includes(v.id));
+  const favoriteComparisons = comparisons
+    .map(([idA, idB]) => {
+      const a = ALL_VEHICLES.find((v) => v.id === idA);
+      const b = ALL_VEHICLES.find((v) => v.id === idB);
+      return a && b ? { idA, idB, a, b } : null;
+    })
+    .filter((x): x is { idA: string; idB: string; a: Vehicle; b: Vehicle } => x !== null);
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
@@ -118,21 +133,47 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>FAVORITOS</Text>
         </View>
-        {favoriteVehicles.length === 0 ? (
+        {!isAuthenticated ? null : favoriteVehicles.length === 0 && favoriteComparisons.length === 0 && !chatFavorited ? (
           <Text style={styles.emptyFavorites}>Nenhum favorito ainda</Text>
         ) : (
-          favoriteVehicles.map((v) => (
-            <TouchableOpacity
-              key={v.id}
-              style={styles.favoriteItem}
-              onPress={() => { openVehicle(v.id); onClose(); }}
-            >
-              <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
-              <Text style={styles.favoriteTitle} numberOfLines={1}>
-                {v.versao}
-              </Text>
-            </TouchableOpacity>
-          ))
+          <>
+            {chatFavorited && (
+              <TouchableOpacity
+                style={styles.favoriteItem}
+                onPress={() => { handleNavPress('Início'); onClose(); }}
+                onLongPress={toggleChatFavorite}
+              >
+                <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
+                <Text style={styles.favoriteTitle} numberOfLines={1}>
+                  Conversa: {chatPreview}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {favoriteVehicles.map((v) => (
+              <TouchableOpacity
+                key={v.id}
+                style={styles.favoriteItem}
+                onPress={() => { openVehicle(v.id); onClose(); }}
+              >
+                <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
+                <Text style={styles.favoriteTitle} numberOfLines={1}>
+                  {v.versao}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {favoriteComparisons.map(({ idA, idB, a, b }) => (
+              <TouchableOpacity
+                key={`${idA}__${idB}`}
+                style={styles.favoriteItem}
+                onPress={() => { openComparison(idA, idB); onClose(); }}
+              >
+                <MaterialCommunityIcons name="star" size={12} color={Colors.accent} />
+                <Text style={styles.favoriteTitle} numberOfLines={1}>
+                  Comparação {a.versao} × {b.versao} salva
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </>
         )}
 
         {/* Conversas recentes */}
@@ -152,13 +193,39 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
         
         {/* Rodapé — perfil */}
         <View style={styles.profileRow}>
-          <TouchableOpacity style={styles.profilePill}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarLetter}>M</Text>
-            </View>
-            <Text style={styles.profilePillName} numberOfLines={1}>Mariana</Text>
+          <TouchableOpacity
+            style={styles.profilePill}
+            onPress={() => {
+              if (!isAuthenticated) {
+                onClose();
+                requestLogin({ type: 'login' });
+              }
+            }}
+          >
+            {isAuthenticated && user ? (
+              <>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarLetter}>{user.name.charAt(0).toUpperCase()}</Text>
+                </View>
+                <Text style={styles.profilePillName} numberOfLines={1}>{user.name}</Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.avatar}>
+                  <Feather name="user" size={14} color={Colors.textPrimary} />
+                </View>
+                <Text style={styles.profilePillName} numberOfLines={1}>Faça Login</Text>
+              </>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.newChatIcon} onPress={() => handleNavPress('Início')}>
+          <TouchableOpacity
+            style={styles.newChatIcon}
+            onPress={() => {
+              resetChat();
+              handleNavPress('Início');
+              onClose();
+            }}
+          >
             <MaterialCommunityIcons name="message-plus" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>

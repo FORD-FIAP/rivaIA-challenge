@@ -1,6 +1,6 @@
 /** Header fixo presente em todas as telas: histórico / RIVA ˅ / menu */
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 
@@ -12,7 +12,7 @@ export function Header({ onMenuPress }: HeaderProps) {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.iconButton} onPress={onMenuPress}>
-        <Feather name="menu" size={20} color={Colors.textMuted} />
+        <Feather name="menu" size={18} color={Colors.textPrimary} />
       </TouchableOpacity>
     </View>
   );
@@ -28,9 +28,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg,
   },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
+    borderRadius: Colors.radiusPill,
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   }
 });

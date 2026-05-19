@@ -2,8 +2,16 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 
-export function RivaOrb() {
+interface RivaOrbProps {
+  size?: number;
+}
+
+export function RivaOrb({ size = 56 }: RivaOrbProps) {
   const pulse = useRef(new Animated.Value(1)).current;
+  const radius = size / 2;
+  const shineSize = Math.round(size * 0.32);
+  const shineRadius = shineSize / 2;
+  const shineOffset = Math.round(size * 0.16);
 
   useEffect(() => {
     Animated.loop(
@@ -15,35 +23,44 @@ export function RivaOrb() {
   }, [pulse]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: size, height: size }]}>
       {/* Halo de glow externo */}
-      <Animated.View style={[styles.glow, { transform: [{ scale: pulse }] }]} />
+      <Animated.View
+        style={[
+          styles.glow,
+          { width: size, height: size, borderRadius: radius },
+          { transform: [{ scale: pulse }] },
+        ]}
+      />
       {/* Orb principal */}
-      <View style={styles.orb} />
+      <View style={[styles.orb, { width: size, height: size, borderRadius: radius }]} />
       {/* Reflexo interno */}
-      <View style={styles.shine} />
+      <View
+        style={[
+          styles.shine,
+          {
+            width: shineSize,
+            height: shineSize,
+            borderRadius: shineRadius,
+            top: shineOffset,
+            left: shineOffset + 2,
+          },
+        ]}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 56,
-    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
   glow: {
     position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     backgroundColor: 'rgba(0,157,221,0.25)',
   },
   orb: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     /** Aproximação do gradiente radial: centro claro (#6FD7FF) → escuro (#0F4571) */
     backgroundColor: '#009DDD',
     shadowColor: '#009DDD',
@@ -54,11 +71,6 @@ const styles = StyleSheet.create({
   },
   shine: {
     position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
     backgroundColor: 'rgba(255,255,255,0.28)',
-    top: 9,
-    left: 11,
   },
 });
