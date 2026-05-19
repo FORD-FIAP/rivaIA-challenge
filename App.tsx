@@ -12,9 +12,12 @@ import {
 } from '@expo-google-fonts/sora';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
+import { AuthProvider } from './src/context/AuthContext';
+import { ChatProvider } from './src/context/ChatContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
 import { CompararScreen } from './src/screens/CompararScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
 import { Sidebar } from './src/components/home/Sidebar';
 
 const DESKTOP_BREAKPOINT = 600;
@@ -32,6 +35,7 @@ function AppScreens() {
         <HomeScreen />
       )}
       <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
+      <LoginScreen />
     </>
   );
 }
@@ -60,7 +64,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationProvider>
+       <AuthProvider>
         <FavoritesProvider>
+         <ChatProvider>
           <StatusBar style="light" />
           {showDesktopFrame ? (
             <View style={styles.webContainer}>
@@ -71,7 +77,9 @@ export default function App() {
           ) : (
             <AppScreens />
           )}
+         </ChatProvider>
         </FavoritesProvider>
+       </AuthProvider>
       </NavigationProvider>
     </SafeAreaProvider>
   );

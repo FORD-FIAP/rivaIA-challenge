@@ -47,7 +47,7 @@ export function RadarChart({
   labelB,
   size = 260,
 }: RadarChartProps) {
-  const padding = 44;
+  const padding = 68;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - padding;
@@ -132,7 +132,7 @@ export function RadarChart({
         {/* Labels dos eixos */}
         {AXES.map((label, i) => {
           const angle = -Math.PI / 2 + (i * 2 * Math.PI) / AXES.length;
-          const labelR = r + 22;
+          const labelR = r + 16;
           const x = cx + labelR * Math.cos(angle);
           const y = cy + labelR * Math.sin(angle);
           const anchor =
