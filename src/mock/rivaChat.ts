@@ -21,23 +21,29 @@ export type YouTubeCard = {
   link: string;
 };
 
-export type SourceCard = {
-  type: 'video' | 'forum';
-  title: string;
-  source: string;
-  badge: string;
+export type SourceLink = {
+  emoji: string;        // ex: '🔵', '📊', '💰', '🔧'
+  label: string;        // ex: 'Ford Brasil (oficial)'
+  url: string;
+  description: string;  // ex: 'site da montadora com ficha técnica e e-book'
 };
 
-export type ComparisonRow = {
-  attribute: string;
-  raptor: string;
-  triton: string;
-  winner: 'raptor' | 'triton' | 'tie';
+/** Spec de um lado da comparação, com flag opcional de "vencedor" (destaque). */
+export type ComparisonSpec = {
+  label: string;
+  value: string;
+  winner?: boolean;
+};
+
+/** Um lado da comparação (um veículo). */
+export type ComparisonSide = {
+  name: string;          // ex: 'Ford Ranger Raptor'
+  specs: ComparisonSpec[];
 };
 
 export type Verdict = {
   label: string;
-  variant: 'raptor' | 'triton';
+  variant: 'a' | 'b';
 };
 
 export type UserMessage = {
@@ -48,22 +54,28 @@ export type UserMessage = {
 export type RivaVehicleInfo = {
   role: 'riva';
   type: 'vehicle_info';
+  title?: string;            // ex: 'Ford Ranger Raptor 2025 — Resumo rápido'
   intro: string;
-  text: string;
+  text?: string;             // parágrafo complementar
   specs: SpecItem[];
-  modeBadges: Badge[];
-  priceNote: string;
-  youtube: YouTubeCard;
+  modeBadges?: Badge[];
+  priceNote?: string;
+  youtube?: YouTubeCard;
+  sources?: SourceLink[];    // lista "Fontes para consultar"
 };
 
 export type RivaComparison = {
   role: 'riva';
   type: 'comparison';
+  title?: string;            // ex: 'Triton HPE-S vs Ranger Raptor 2025'
   intro: string;
-  comparisonRows: ComparisonRow[];
-  verdicts: Verdict[];
-  sources: SourceCard[];
-  tip: string;
+  sides: [ComparisonSide, ComparisonSide];
+  summary?: {
+    paragraphs: string[];    // parágrafos de "Resumo prático"
+    verdict?: string;        // linha final destacada com "Em resumo:"
+  };
+  verdicts?: Verdict[];      // chips opcionais
+  sources?: SourceLink[];
 };
 
 export type RivaMessage = RivaVehicleInfo | RivaComparison;
@@ -81,79 +93,117 @@ export const rivaScript: ScriptedMessage[] = [
   {
     id: 'msg-1',
     role: 'user',
-    text: 'Informações Ranger Raptor',
+    text: 'olá, quero saber mais sobre a Ranger Raptor',
   },
   {
     id: 'msg-2',
     role: 'riva',
     type: 'vehicle_info',
-    intro: 'A Ford Ranger Raptor é a versão mais extrema e esportiva da picape média da Ford.',
+    title: 'Ford Ranger Raptor 2025 — Resumo rápido',
+    intro: 'A Ford Ranger Raptor é a versão mais extrema e esportiva de Picapes Ford.',
     text: 'Desenvolvida pela divisão Ford Performance, seu foco principal é o desempenho em alta velocidade em terrenos off-road, rally e estradas de terra.',
-
     specs: [
       { label: 'Motor', value: 'V6 3.0L Biturbo' },
-      { label: 'Potência', value: '397 cv @ 5.650 RPM' },
-      { label: 'Torque máx.', value: '583 Nm @ 3.500 RPM' },
-      { label: 'Transmissão', value: 'AT 10 vel. + paddle shifters' },
-      { label: 'Tração', value: '4WD com bloqueios' },
+      { label: 'Potência', value: '397 cv' },
+      { label: 'Torque máx.', value: '583 Nm' },
+      { label: 'Tração', value: '2H, 4A (Automático), 4H e 4L' },
       { label: 'Suspensão', value: 'FOX Racing Live Valve 2.5"' },
       { label: '0–100 km/h', value: '5,8 s' },
-      { label: 'Preço', value: 'R$ 499.000' },
-    ],
-    modeBadges: [
-      { label: 'Normal' },
-      { label: 'Sport' },
-      { label: 'Escorregadio' },
-      { label: 'Lama' },
-      { label: 'Areia' },
-      { label: 'Rock Crawl' },
-      { label: 'Baja', highlight: true },
     ],
     priceNote:
       'É a picape média mais cara do Brasil, com valores próximos a R$ 499.000.',
     youtube: {
       link: 'https://www.youtube.com/watch?v=TeLsLoZDDpc',
     },
+    sources: [
+      {
+        emoji: '🔵',
+        label: 'Ford Brasil (oficial)',
+        url: 'https://www.ford.com.br/picapes/ranger-raptor/',
+        description: 'site da montadora com ficha técnica e e-book',
+      },
+      {
+        emoji: '📊',
+        label: 'Carro.Blog.br',
+        url: 'https://carro.blog.br/',
+        description: 'ficha técnica detalhada com análise de consumo e desempenho',
+      },
+      {
+        emoji: '💰',
+        label: 'Webmotors (Tabela FIPE)',
+        url: 'https://www.webmotors.com.br/',
+        description: 'preços de mercado e comparativos',
+      },
+      {
+        emoji: '🔧',
+        label: 'Mago dos Carros',
+        url: 'https://www.youtube.com/@MagodosCarros',
+        description: 'ficha técnica completa com custos de manutenção',
+      },
+    ],
   },
   {
     id: 'msg-3',
     role: 'user',
-    text: 'Ok, gostei. Compare agora com a Trition HPE-S',
+    text: 'Ok, gostei. Quero que compare com a Triton HPE-S, gosto de ambas e preciso saber as qualidades e defeitos',
   },
   {
     id: 'msg-4',
     role: 'riva',
     type: 'comparison',
-    intro:
-      'Para uso off-road, aqui está a comparação direta entre Ranger Raptor e Mitsubishi Triton HPE S:',
-    comparisonRows: [
-      { attribute: 'Motor', raptor: 'V6 3.0L 397 cv', triton: '2.4L 185 cv', winner: 'raptor' },
-      { attribute: 'Torque', raptor: '583 Nm', triton: '430 Nm', winner: 'raptor' },
-      { attribute: 'Suspensão', raptor: 'FOX Racing 2.5" Live Valve', triton: 'Convencional reforçada', winner: 'raptor' },
-      { attribute: 'Modos off-road', raptor: '7 modos (incl. Baja)', triton: 'Lama / Areia / Pedra', winner: 'raptor' },
-      { attribute: 'Bloq. diferencial', raptor: 'Diant. + Traseiro', triton: 'Traseiro', winner: 'raptor' },
-      { attribute: '0–100 km/h', raptor: '5,8 s', triton: '~11 s', winner: 'raptor' },
-      { attribute: 'Preço (aprox.)', raptor: 'R$ 499.000', triton: 'R$ 290.000', winner: 'triton' },
+    title: 'Triton HPE-S vs Ranger Raptor 2025',
+    intro: 'Aqui está a comparação direta entre as duas:',
+    sides: [
+      {
+        name: 'Mitsubishi Triton HPE-S',
+        specs: [
+          { label: 'Motor', value: '2.4 biturbo diesel, 4 cilindros' },
+          { label: 'Torque', value: '50,9 kgfm' },
+          { label: 'Câmbio', value: 'Automático 6 marchas' },
+          { label: '0–100 km/h', value: '10,4 segundos' },
+          { label: 'Suspensão', value: 'Independente dianteira, eixo rígido traseiro' },
+          { label: 'Off-road', value: '7 modos de condução, Super Select II' },
+          { label: 'Preço', value: 'R$ 314.990', winner: true },
+        ],
+      },
+      {
+        name: 'Ford Ranger Raptor',
+        specs: [
+          { label: 'Motor', value: 'V6 biturbo gasolina 3.0, 397 cv', winner: true },
+          { label: 'Torque', value: '59,4 kgfm', winner: true },
+          { label: 'Câmbio', value: 'Automático 10 marchas', winner: true },
+          { label: '0–100 km/h', value: '5,8 segundos', winner: true },
+          { label: 'Suspensão', value: 'Fox Racing Shox dedicada', winner: true },
+          { label: 'Off-road', value: '7 modos de condução, diferencial dianteiro e traseiro bloc.', winner: true },
+          { label: 'Preço', value: '~R$ 469.000' },
+        ],
+      },
     ],
+    summary: {
+      paragraphs: [
+        'A Ranger Raptor é uma máquina de performance off-road e velocidade extrema — quase o dobro de potência, aceleração esportiva e suspensão de competição. Ideal para quem quer o máximo em trilhas rápidas e tem apetite pelo preço.',
+        'A Triton HPE-S é mais equilibrada para uso cotidiano: diesel mais econômico, preço ~R$ 154 mil menor, garantia de 5 anos ou 100 mil km e boa capacidade off-road. Atende bem quem alterna entre cidade, estrada e aventuras moderadas.',
+      ],
+      verdict: 'Raptor para quem quer o extremo. Triton HPE-S para quem quer versatilidade com custo-benefício.',
+    },
     verdicts: [
-      { label: '⚡ Raptor vence em performance', variant: 'raptor' },
-      { label: '💰 Triton vence em custo', variant: 'triton' },
+      { label: '⚡ Raptor vence em performance', variant: 'a' },
+      { label: '💰 Triton vence em custo', variant: 'b' },
     ],
     sources: [
       {
-        type: 'video',
-        title: 'Ranger Raptor vs Triton HPE S — DUELO OFF-ROAD no mangue e na lama',
-        source: 'YouTube · Canal PicapeBrasil · 1,2M views · 2024',
-        badge: 'Vídeo',
+        emoji: '🔴',
+        label: 'Mitsubishi Motors Brasil',
+        url: 'https://www.mitsubishimotors.com.br/',
+        description: 'site oficial com ficha técnica da Triton',
       },
       {
-        type: 'forum',
-        title: 'Trilha pesada no Pantanal — Raptor e Triton: quem foi melhor?',
-        source: 'Reddit r/picapesnobrasil · 194 upvotes · 2024',
-        badge: 'Fórum',
+        emoji: '🔵',
+        label: 'Ford Brasil',
+        url: 'https://www.ford.com.br/picapes/ranger-raptor/',
+        description: 'site oficial da Ranger Raptor',
       },
     ],
-    tip: 'Para trilhas técnicas e terrenos extremos, a Raptor é superior em todos os quesitos de performance. A Triton HPE S entrega boa capacidade off-road por um preço significativamente menor — ideal para quem quer aventura sem o investimento premium.',
   },
 ];
 
@@ -163,9 +213,5 @@ export const endOfScriptReply: RivaMessage = {
   type: 'vehicle_info',
   intro:
     'Este é um chat de demonstração — o roteiro mockado terminou. Em breve a RIVA responderá perguntas reais com base no seu perfil e na nossa base de veículos.',
-  text: '',
   specs: [],
-  modeBadges: [],
-  priceNote: '',
-  youtube: { link: '' },
 };
