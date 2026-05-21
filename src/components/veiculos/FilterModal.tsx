@@ -85,6 +85,13 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
     setPending({ ...pending, brands: next, categories: validCategories, models: validModels });
   }
 
+  function toggleCategory(cat: VehicleCategory) {
+    const next = toggle(pending.categories, cat);
+    const scope = next.length > 0 ? filteredByBrand.filter((v) => next.includes(v.categoria)) : filteredByBrand;
+    const validModels = pending.models.filter((m) => scope.some((v) => v.modelo === m));
+    setPending({ ...pending, categories: next, models: validModels });
+  }
+
   const totalSelected =
     pending.brands.length +
     pending.models.length +
@@ -118,27 +125,31 @@ export function FilterModal({ visible, applied, onApply, onClose }: FilterModalP
             ))}
           </FilterSection>
 
-          <FilterSection label="CATEGORIA">
-            {availableCategories.map((cat) => (
-              <Chip
-                key={cat}
-                label={cat}
-                active={pending.categories.includes(cat)}
-                onPress={() => setPending({ ...pending, categories: toggle(pending.categories, cat) })}
-              />
-            ))}
-          </FilterSection>
+          {pending.brands.length > 0 && availableCategories.length > 0 && (
+            <FilterSection label="CATEGORIA">
+              {availableCategories.map((cat) => (
+                <Chip
+                  key={cat}
+                  label={cat}
+                  active={pending.categories.includes(cat)}
+                  onPress={() => toggleCategory(cat)}
+                />
+              ))}
+            </FilterSection>
+          )}
 
-          <FilterSection label="MODELO">
-            {availableModels.map((model) => (
-              <Chip
-                key={model}
-                label={model}
-                active={pending.models.includes(model)}
-                onPress={() => setPending({ ...pending, models: toggle(pending.models, model) })}
-              />
-            ))}
-          </FilterSection>
+          {pending.categories.length > 0 && availableModels.length > 0 && (
+            <FilterSection label="MODELO">
+              {availableModels.map((model) => (
+                <Chip
+                  key={model}
+                  label={model}
+                  active={pending.models.includes(model)}
+                  onPress={() => setPending({ ...pending, models: toggle(pending.models, model) })}
+                />
+              ))}
+            </FilterSection>
+          )}
         </ScrollView>
 
         {/* Botões */}
