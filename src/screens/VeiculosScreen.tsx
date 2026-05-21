@@ -15,7 +15,7 @@ import { VeiculoResultCard } from '../components/veiculos/VeiculoResultCard';
 import { FilterModal, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterModal';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 import { Colors } from '../theme/colors';
-import { vehicles, featuredVehicle } from '../mock/vehicles';
+import { vehicles, featuredVehicle } from '../mock/veiculos';
 import { Vehicle } from '../types/vehicle';
 import { useNavigation } from '../context/NavigationContext';
 

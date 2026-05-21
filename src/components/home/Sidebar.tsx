@@ -14,7 +14,7 @@ import { useNavigation, AppScreen } from '../../context/NavigationContext';
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
-import { vehicles, featuredVehicle } from '../../mock/vehicles';
+import { vehicles, featuredVehicle } from '../../mock/veiculos';
 import { Vehicle } from '../../types/vehicle';
 
 const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
