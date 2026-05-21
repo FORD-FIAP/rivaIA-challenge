@@ -1,5 +1,5 @@
 /** Tela inicial do app RIVA — hero fullscreen, composer e listagem de veículos */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { RivaOrb } from '../components/home/RivaOrb';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
+import { useRecentlyViewedContext } from '../context/RecentlyViewedContext';
 import { useChat } from '../context/ChatContext';
 import { ChatInput } from '../components/home/ChatInput';
 import { ChatThread } from '../components/home/ChatThread';
@@ -26,11 +27,26 @@ import { featuredVehicle, vehicles } from '../mock/vehicles';
 import { Vehicle } from '../types/vehicle';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 
+const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+/** Escolhe o veículo da semana de forma determinística — muda no domingo 00h local. */
+function pickWeeklyVehicle(list: Vehicle[]): Vehicle {
+  const now = new Date();
+  const startOfWeek = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - now.getDay(),
+  );
+  const weekIndex = Math.floor(startOfWeek.getTime() / MS_IN_WEEK);
+  return list[((weekIndex % list.length) + list.length) % list.length];
+}
+
 export function HomeScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const { openSidebar, navigate } = useNavigation();
   const { user, isAuthenticated, requestLogin } = useAuth();
   const { favorites } = useFavoritesContext();
+  const { recent } = useRecentlyViewedContext();
   const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite } = useChat();
 
   function handleToggleFavoriteChat() {
@@ -41,20 +57,21 @@ export function HomeScreen() {
     }
   }
   const chatAnim = useRef(new Animated.Value(hasConversation ? 1 : 0)).current;
-  const favoriteVehicles = vehicles
-    .concat(featuredVehicle)
-    .filter((v) => favorites.includes(v.id));
-  const [vehicleList, setVehicleList] = useState<Vehicle[]>([]);
+  const allVehicles = useMemo<Vehicle[]>(() => [featuredVehicle, ...vehicles], []);
+  const favoriteVehicles = allVehicles.filter((v) => favorites.includes(v.id));
+  const recentVehicles = useMemo(
+    () => recent
+      .map((id) => allVehicles.find((v) => v.id === id))
+      .filter((v): v is Vehicle => v !== undefined),
+    [recent, allVehicles],
+  );
+  const weeklyFeatured = useMemo(() => pickWeeklyVehicle(allVehicles), [allVehicles]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [headerHeight, setHeaderHeight] = useState(80);
   const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
   const heroHeight = windowHeight - headerHeight;
-
-  useEffect(() => {
-    setVehicleList(vehicles);
-  }, []);
 
   useEffect(() => {
     Animated.loop(
@@ -214,8 +231,8 @@ export function HomeScreen() {
           {/* Card destaque */}
           <View style={styles.featuredWrapper}>
             <FeaturedCard
-              vehicle={featuredVehicle}
-              onPress={() => handleVehiclePress(featuredVehicle)}
+              vehicle={weeklyFeatured}
+              onPress={() => handleVehiclePress(weeklyFeatured)}
             />
           </View>
 
@@ -251,16 +268,32 @@ export function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.grid}>
-            {vehicleList.map((vehicle) => (
-              <View key={vehicle.id} style={styles.gridItem}>
-                <VeiculoCard
-                  vehicle={vehicle}
-                  onPress={() => handleVehiclePress(vehicle)}
-                />
-              </View>
-            ))}
-          </View>
+          {!isAuthenticated ? (
+            <View style={styles.favoritesEmpty}>
+              <MaterialCommunityIcons name="history" size={20} color={Colors.textMuted} />
+              <Text style={styles.favoritesEmptyText}>
+                Faça login para ver os veículos que você analisou recentemente.
+              </Text>
+            </View>
+          ) : recentVehicles.length === 0 ? (
+            <View style={styles.favoritesEmpty}>
+              <MaterialCommunityIcons name="history" size={20} color={Colors.textMuted} />
+              <Text style={styles.favoritesEmptyText}>
+                Você ainda não analisou nenhum veículo. Abra um carro para começar!
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {recentVehicles.map((vehicle) => (
+                <View key={vehicle.id} style={styles.gridItem}>
+                  <VeiculoCard
+                    vehicle={vehicle}
+                    onPress={() => handleVehiclePress(vehicle)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
         </View>
         )}
       </ScrollView>
