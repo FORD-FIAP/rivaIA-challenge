@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { VehicleCategory } from '../../types/vehicle';
-import { vehicles, featuredVehicle } from '../../mock/vehicles';
+import { vehicles, featuredVehicle } from '../../mock/veiculos';
 
 export interface FilterState {
   brands: string[];
@@ -30,7 +30,6 @@ export const EMPTY_FILTERS: FilterState = {
 const ALL_VEHICLES = [featuredVehicle, ...vehicles];
 
 const ALL_BRANDS = [...new Set(ALL_VEHICLES.map((v) => v.marca))];
-const ALL_YEARS   = [...new Set(ALL_VEHICLES.map((v) => v.ano))].sort((a, b) => b - a);
 
 interface FilterModalProps {
   visible: boolean;
