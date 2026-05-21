@@ -14,6 +14,7 @@ import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { useAuth } from '../../context/AuthContext';
+import { useRecentlyViewedContext } from '../../context/RecentlyViewedContext';
 
 interface VeiculoFichaProps {
   vehicle: Vehicle | null;
@@ -37,6 +38,7 @@ export function VeiculoFicha({ vehicle, onClose }: VeiculoFichaProps) {
   const { height: screenHeight } = useWindowDimensions();
   const { isFavorite, toggle } = useFavoritesContext();
   const { isAuthenticated, requestLogin } = useAuth();
+  const { trackView } = useRecentlyViewedContext();
   const favorited = isAuthenticated && vehicle ? isFavorite(vehicle.id) : false;
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -56,6 +58,7 @@ export function VeiculoFicha({ vehicle, onClose }: VeiculoFichaProps) {
         useNativeDriver: true,
       }),
     ]).start();
+    if (visible && vehicle) trackView(vehicle.id);
   }, [visible]);
 
   if (!vehicle) return null;

@@ -5,10 +5,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   FlatList,
-  TouchableWithoutFeedback,
   ScrollView,
+  Animated,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +16,7 @@ import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
-import { vehicles, featuredVehicle } from '../mock/vehicles';
+import { vehicles, featuredVehicle } from '../mock/veiculos';
 import { Vehicle, VehicleScores } from '../types/vehicle';
 import { RadarChart } from '../components/comparar/RadarChart';
 
@@ -203,7 +202,7 @@ export function CompararScreen() {
                   colorB={COLOR_B}
                   labelA={vA.versao}
                   labelB={vB.versao}
-                  size={width - 80}
+                  size={Math.min(width - 80, 320)}
                 />
               </View>
             </View>
@@ -575,24 +574,160 @@ function VehiclePickerModal({
   onSelect: (v: Vehicle) => void;
   onClose: () => void;
 }) {
+  const { height: screenHeight } = useWindowDimensions();
+  const slideAnim = useRef(new Animated.Value(screenHeight)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    slideAnim.setValue(screenHeight);
+    backdropAnim.setValue(0);
+    setSelectedBrands([]);
+    setSelectedCategories([]);
+    setSelectedModels([]);
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [visible, screenHeight]);
+
+  if (!visible) return null;
+
   const excludedIds = new Set(excluded.map((v) => v.id));
-  const available = ALL_VEHICLES.filter((v) => !excludedIds.has(v.id));
+
+  // Chips: usam o catálogo COMPLETO (Ranger e similares devem aparecer mesmo quando
+  // a única versão disponível já está selecionada na comparação).
+  const allBrands = [...new Set(ALL_VEHICLES.map((v) => v.marca))];
+
+  const filteredByBrand = selectedBrands.length > 0
+    ? ALL_VEHICLES.filter((v) => selectedBrands.includes(v.marca))
+    : ALL_VEHICLES;
+  const availableCategories = [...new Set(filteredByBrand.map((v) => v.categoria))];
+
+  const filteredByBrandAndCategory = selectedCategories.length > 0
+    ? filteredByBrand.filter((v) => selectedCategories.includes(v.categoria))
+    : filteredByBrand;
+  const availableModels = [...new Set(filteredByBrandAndCategory.map((v) => v.modelo))];
+
+  const hasAnyFilter =
+    selectedBrands.length + selectedCategories.length + selectedModels.length > 0;
+
+  // Lista de carros só aparece quando algum filtro foi aplicado; sempre exclui o já comparado.
+  const available = hasAnyFilter
+    ? (selectedModels.length > 0
+        ? filteredByBrandAndCategory.filter((v) => selectedModels.includes(v.modelo))
+        : filteredByBrandAndCategory
+      ).filter((v) => !excludedIds.has(v.id))
+    : [];
+
+  function toggle<T>(list: T[], value: T): T[] {
+    return list.includes(value) ? list.filter((i) => i !== value) : [...list, value];
+  }
+
+  function toggleBrand(brand: string) {
+    const next = toggle(selectedBrands, brand);
+    const nextScope = next.length > 0 ? ALL_VEHICLES.filter((v) => next.includes(v.marca)) : ALL_VEHICLES;
+    setSelectedBrands(next);
+    setSelectedCategories((prev) => prev.filter((c) => nextScope.some((v) => v.categoria === c)));
+    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
+  }
+
+  function toggleCategory(cat: string) {
+    const next = toggle(selectedCategories, cat);
+    const nextScope = next.length > 0 ? filteredByBrand.filter((v) => next.includes(v.categoria)) : filteredByBrand;
+    setSelectedCategories(next);
+    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
+  }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalBackdrop} />
-      </TouchableWithoutFeedback>
+    <View style={StyleSheet.absoluteFill}>
+      <Animated.View style={[styles.modalBackdrop, { opacity: backdropAnim }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+      </Animated.View>
 
-      <View style={styles.modalSheet}>
+      <Animated.View style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.handle} />
-        <Text style={styles.modalTitle}>Escolher veículo</Text>
+        <View style={styles.modalTitleRow}>
+          <Text style={styles.modalTitle}>Escolher veículo</Text>
+          {hasAnyFilter && (
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedBrands([]);
+                setSelectedCategories([]);
+                setSelectedModels([]);
+              }}
+            >
+              <Text style={styles.clearFiltersLabel}>Limpar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.filtersBlock}>
+          <PickerFilterRow label="MARCA">
+            {allBrands.map((brand) => (
+              <PickerChip
+                key={brand}
+                label={brand.charAt(0) + brand.slice(1).toLowerCase()}
+                active={selectedBrands.includes(brand)}
+                onPress={() => toggleBrand(brand)}
+              />
+            ))}
+          </PickerFilterRow>
+
+          {availableCategories.length > 0 && (
+            <PickerFilterRow label="CATEGORIA">
+              {availableCategories.map((cat) => (
+                <PickerChip
+                  key={cat}
+                  label={cat}
+                  active={selectedCategories.includes(cat)}
+                  onPress={() => toggleCategory(cat)}
+                />
+              ))}
+            </PickerFilterRow>
+          )}
+
+          {selectedCategories.length > 0 && availableModels.length > 0 && (
+            <PickerFilterRow label="MODELO">
+              {availableModels.map((model) => (
+                <PickerChip
+                  key={model}
+                  label={model}
+                  active={selectedModels.includes(model)}
+                  onPress={() => setSelectedModels((prev) => toggle(prev, model))}
+                />
+              ))}
+            </PickerFilterRow>
+          )}
+        </View>
 
         <FlatList
           data={available}
           keyExtractor={(v) => v.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          style={styles.list}
+          ListEmptyComponent={
+            <View style={styles.listEmpty}>
+              <Text style={styles.listEmptyText}>
+                {hasAnyFilter
+                  ? 'Nenhum veículo com esses filtros'
+                  : 'Selecione marca, categoria ou modelo para ver os carros'}
+              </Text>
+            </View>
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.listRow}
@@ -612,8 +747,35 @@ function VehiclePickerModal({
             </TouchableOpacity>
           )}
         />
-      </View>
-    </Modal>
+      </Animated.View>
+    </View>
+  );
+}
+
+function PickerFilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.filterRow}>
+      <Text style={styles.filterRowLabel}>{label}</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterChipsScroll}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+function PickerChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={[styles.filterChip, active && styles.filterChipActive]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <Text style={[styles.filterChipLabel, active && styles.filterChipLabelActive]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -953,16 +1115,21 @@ const styles = StyleSheet.create({
 
   // Modal
   modalBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   modalSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Colors.radius2xl,
+    borderTopRightRadius: Colors.radius2xl,
     paddingTop: 12,
     paddingHorizontal: 20,
-    maxHeight: '75%',
+    paddingBottom: 32,
+    maxHeight: '88%',
   },
   handle: {
     width: 40,
@@ -972,14 +1139,76 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 16,
   },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   modalTitle: {
     color: Colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
-    marginBottom: 16,
   },
-  listContent: { paddingBottom: 40, gap: 4 },
+  clearFiltersLabel: {
+    color: Colors.accent,
+    fontSize: 12,
+    fontFamily: 'Sora_600SemiBold',
+  },
+  filtersBlock: {
+    gap: 10,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  filterRow: {
+    gap: 6,
+  },
+  filterRowLabel: {
+    color: Colors.textHint,
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
+    letterSpacing: 1,
+  },
+  filterChipsScroll: {
+    gap: 6,
+    paddingRight: 20,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Colors.radiusPill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  filterChipLabel: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontFamily: 'Sora_400Regular',
+  },
+  filterChipLabelActive: {
+    color: Colors.surface,
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
+  },
+  listEmpty: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  listEmptyText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontFamily: 'Sora_400Regular',
+  },
+  list: { flex: 1 },
+  listContent: { paddingBottom: 20, gap: 4 },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',

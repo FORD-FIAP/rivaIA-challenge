@@ -47,13 +47,16 @@ export function RadarChart({
   labelB,
   size = 260,
 }: RadarChartProps) {
-  const padding = 68;
+  // Padding proporcional: menor em telas estreitas para o radar não sumir
+  const padding = Math.max(44, Math.min(68, size * 0.22));
+  const labelFontSize = size < 260 ? 8 : 9;
+  const labelOffset = size < 260 ? 12 : 16;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - padding;
 
   return (
-    <View>
+    <View style={{ width: size, height: size + 28 }}>
       <Svg width={size} height={size}>
         {/* Grade — polígonos concêntricos */}
         {Array.from({ length: LEVELS }, (_, lvl) => {
@@ -132,7 +135,7 @@ export function RadarChart({
         {/* Labels dos eixos */}
         {AXES.map((label, i) => {
           const angle = -Math.PI / 2 + (i * 2 * Math.PI) / AXES.length;
-          const labelR = r + 16;
+          const labelR = r + labelOffset;
           const x = cx + labelR * Math.cos(angle);
           const y = cy + labelR * Math.sin(angle);
           const anchor =
@@ -147,7 +150,7 @@ export function RadarChart({
               x={x}
               y={y + 4}
               textAnchor={anchor}
-              fontSize={9}
+              fontSize={labelFontSize}
               fill={Colors.textMuted}
               fontFamily="Sora_400Regular"
             >
