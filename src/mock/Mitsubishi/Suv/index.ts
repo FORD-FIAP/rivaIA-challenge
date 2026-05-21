@@ -1,8 +1,6 @@
 import { Vehicle } from '../../../types/vehicle';
 
-// ─────────────────────────────────────────────
-// FEATURED — Pajero Sport Legend Black (topo off-road)
-// ─────────────────────────────────────────────
+
 export const featuredVehicle: Vehicle = {
   id: '1',
   marca: 'MITSUBISHI',
@@ -68,9 +66,7 @@ export const featuredVehicle: Vehicle = {
   },
 };
 
-// ─────────────────────────────────────────────
-// PAJERO SPORT
-// ─────────────────────────────────────────────
+
 export const pajeroSportVersoes: Vehicle[] = [
   {
     id: '2',
@@ -326,9 +322,7 @@ export const pajeroSportVersoes: Vehicle[] = [
   },
 ];
 
-// ─────────────────────────────────────────────
-// ECLIPSE CROSS
-// ─────────────────────────────────────────────
+
 export const eclipseCrossVersoes: Vehicle[] = [
   {
     id: '6',
@@ -710,15 +704,13 @@ export const eclipseCrossVersoes: Vehicle[] = [
   },
 ];
 
-// ─────────────────────────────────────────────
-// OUTLANDER PHEV
-// ─────────────────────────────────────────────
+
 export const outlanderPhevVersoes: Vehicle[] = [
   {
     id: '12',
     marca: 'MITSUBISHI',
     categoria: 'SUV',
-    modelo: 'Outlander PHEV',
+    modelo: 'Outlander',
     versao: 'Outlander PHEV HPE-S',
     classificacao: 'SUV Médio Híbrido Plug-in 7 Lugares',
     ano: 2026,
@@ -781,7 +773,7 @@ export const outlanderPhevVersoes: Vehicle[] = [
     id: '13',
     marca: 'MITSUBISHI',
     categoria: 'SUV',
-    modelo: 'Outlander PHEV',
+    modelo: 'Outlander',
     versao: 'Outlander PHEV Signature',
     classificacao: 'SUV Médio Híbrido Plug-in 7 Lugares Premium',
     ano: 2026,

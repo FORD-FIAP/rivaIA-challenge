@@ -16,7 +16,7 @@ import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
-import { vehicles, featuredVehicle } from '../mock/vehicles';
+import { vehicles, featuredVehicle } from '../mock/veiculos';
 import { Vehicle, VehicleScores } from '../types/vehicle';
 import { RadarChart } from '../components/comparar/RadarChart';
 

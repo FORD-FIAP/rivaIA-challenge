@@ -23,7 +23,7 @@ import { ChatThread } from '../components/home/ChatThread';
 import { FeaturedCard } from '../components/home/FeaturedCard';
 import { VeiculoCard } from '../components/home/VeiculoCard';
 import { Colors } from '../theme/colors';
-import { featuredVehicle, vehicles } from '../mock/vehicles';
+import { featuredVehicle, vehicles } from '../mock/veiculos';
 import { Vehicle } from '../types/vehicle';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 
