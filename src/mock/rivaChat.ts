@@ -78,22 +78,58 @@ export type RivaComparison = {
   sources?: SourceLink[];
 };
 
-export type RivaMessage = RivaVehicleInfo | RivaComparison;
+export type MetricCard = {
+  label: string;
+  value: string;
+  sub: string;
+};
 
+export type RichBadge = {
+  type: 'success' | 'warning';
+  text: string;
+};
+
+export type RichScore = {
+  label: string;
+  score: number;
+  color: 'blue' | 'green' | 'orange';
+};
+
+export type RichVideo = {
+  title: string;
+  channel: string;
+  views: string;
+  year: number;
+};
+
+export type RivaRich = {
+  role: 'riva';
+  type: 'rich';
+  title?: string;
+  text?: string;
+  cards?: MetricCard[];
+  bullets?: string[];
+  badges?: RichBadge[];
+  scores?: RichScore[];
+  video?: RichVideo;
+  actions?: string[];
+  sources?: SourceLink[];
+};
+
+export type RivaMessage = RivaVehicleInfo | RivaComparison | RivaRich;
 export type ScriptedMessage = (UserMessage | RivaMessage) & { id: string };
 
-/**
- * Sequência fixa de mensagens. Ordem importa:
- * - mensagens com role 'user' são "playback" do que o usuário deveria dizer;
- * - mensagens com role 'riva' são a resposta correspondente.
- *
- * O ChatContext avança um turno do usuário + um turno da RIVA por envio.
- */
-export const rivaScript: ScriptedMessage[] = [
+export type ScriptedScenario = {
+  id: string;
+  pergunta: string;
+  messages: ScriptedMessage[];
+};
+
+const cenarioRanger: ScriptedMessage[] = [
   {
     id: 'msg-1',
     role: 'user',
-    text: 'olá, quero saber mais sobre a Ranger Raptor',
+    text: 'Quero saber mais sobre a Ranger Raptor',
   },
   {
     id: 'msg-2',
@@ -206,6 +242,86 @@ export const rivaScript: ScriptedMessage[] = [
     ],
   },
 ];
+
+/* Cenârio Pai de família - mini dolphin  */
+
+const cenarioDolphinMini: ScriptedMessage[] = [
+  {
+    id: 'dolphin-1',
+    role: 'user',
+    text: 'Estou pensando em comprar um carro para minha filha que acabou de tirar a habilitação. Que seja pequeno e eletríco.',
+  },
+  {
+    id: 'dolphin-2',
+    role: 'riva',
+    type: 'rich',
+    text: 'Boa escolha de pesquisa! O BYD Dolphin Mini é um dos hatches elétricos mais acessíveis do Brasil e tem um perfil muito interessante para motoristas iniciantes. Veja o panorama geral:',
+    cards: [
+      { label: 'Preço de entrada', value: 'R$ 115.800', sub: 'versão Standard (2025)' },
+      { label: 'Autonomia', value: '340 km', sub: 'ciclo NEDC (carga completa)' },
+      { label: 'Potência', value: '95 cv', sub: 'motor elétrico dianteiro' },
+      { label: 'Carregamento', value: '30 min', sub: 'até 80% em carregador rápido' },
+    ],
+    bullets: [
+      'Facilidade de direção: câmbio automático por natureza, sem embreagem, aceleração suave — ideal para iniciantes!',
+      'Custo mensal baixo: carregando em casa (220V), o custo por km fica entre R$ 0,05 e R$ 0,10 — até 10× mais barato que gasolina',
+      'Manutenção reduzida: sem óleo, filtro, velas — revisões mais simples e baratas',
+      'Tamanho compacto: 3,99m de comprimento, fácil de estacionar em São Paulo',
+    ],
+  },
+  {
+    id: 'dolphin-3',
+    role: 'user',
+    text: 'E quanto à segurança? Consegue me mostrar mais informações sobre isso?',
+  },
+  {
+    id: 'dolphin-4',
+    role: 'riva',
+    type: 'rich',
+    text: 'Segurança é um ponto importante — e o Dolphin Mini entrega o básico bem feito para o segmento. Confira:',
+    badges: [
+      { type: 'success', text: '6 airbags' },
+      { type: 'success', text: 'ABS + EBD' },
+      { type: 'success', text: 'Controle de estabilidade (ESC)' },
+      { type: 'success', text: 'Câmera de ré' },
+      { type: 'success', text: 'Assistente de partida em rampa' },
+      { type: 'warning', text: 'Sem NCAP Brasil ainda' },
+    ],
+    video: {
+      title: 'BYD Dolphin Mini 2025 — Avaliação Completa: segurança, autonomia e custo real',
+      channel: 'Canal Fullpower EV',
+      views: '312 mil visualizações',
+      year: 2025,
+    },
+    scores: [
+      { label: 'Facilidade', score: 9.2, color: 'blue' },
+      { label: 'Segurança', score: 7.8, color: 'green' },
+      { label: 'Custo mensal', score: 8.8, color: 'blue' },
+      { label: 'Custo/benefício', score: 8.5, color: 'orange' },
+    ],
+    actions: [
+      'Comparar com concorrentes',
+      'Simulação de custo mensal',
+      'Concessionárias em SP',
+    ],
+  },
+];
+
+/** Cenários disponíveis para a RIVA */
+export const rivaScenarios: ScriptedScenario[] = [
+  {
+    id: 'ranger-raptor',
+    pergunta: 'Ranger Raptor',
+    messages: cenarioRanger,
+  },
+  {
+    id: 'dolphin-mini',
+    pergunta: 'BYD Dolphin Mini',
+    messages: cenarioDolphinMini,
+  },
+];
+
+export const rivaScript: ScriptedMessage[] = cenarioRanger;
 
 /** Resposta usada quando o roteiro acaba. */
 export const endOfScriptReply: RivaMessage = {
