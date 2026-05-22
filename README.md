@@ -122,15 +122,7 @@ Tipografia: **Sora** em 4 pesos (400, 500, 600, 700). Border-radius padronizado 
 
 ---
 
-## Próximos Passos
+### Integrates 
 
-- [ ] Integrar API de LLM (ex: Claude) no lugar do chat roteirizado
-- [ ] Adicionar imagens reais dos veículos
-- [ ] Implementar tela de Notificações
-- [ ] Adicionar mais veículos ao catálogo (dados via API)
-- [ ] Testes unitários nos componentes principais
-- [ ] Acessibilidade: labels para screen readers
-
----
 
 Desenvolvido como desafio técnico para a **Riva**.
