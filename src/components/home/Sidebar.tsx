@@ -1,5 +1,5 @@
 /** Drawer lateral — overlay absoluto (não usa Modal para ficar dentro do phone frame) */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   Animated,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
@@ -14,8 +16,11 @@ import { useNavigation, AppScreen } from '../../context/NavigationContext';
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { useConversasRecentesContext } from '../../context/ConversasRecentesContext';
 import { vehicles, featuredVehicle } from '../../mock/veiculos';
 import { Vehicle } from '../../types/vehicle';
+
+const HISTORICO_TOOLTIP = 'Botão atualmente desativado';
 
 const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
@@ -30,23 +35,22 @@ const NAV_ITEMS: { label: AppScreen; icon: React.ComponentProps<typeof Feather>[
   { label: 'Comparar', icon: 'bar-chart-2' },
 ];
 
-const RECENT_CONVERSATIONS = [
-  'Ford Ranger Raptor vs Mitsubishi Triton HPE S',
-  'Maverick Hybrid vale a pena pra cidade?',
-  'Picape até R$ 250 mil pra família',
-  'Diferença entre Ranger XLT e Limited',
-  'Tremor é confortável no asfalto?',
-  'Vale upgrade do SYNC 4?',
-  'Melhores modelos de 2024 SUV para o Brasil',
-];
-
 const DRAWER_OFFSET = 400;
 
 export function Sidebar({ visible, onClose }: SidebarProps) {
   const { activeScreen, navigate, openVehicle, openComparison } = useNavigation();
   const { favorites, comparisons } = useFavoritesContext();
   const { user, isAuthenticated, requestLogin } = useAuth();
-  const { resetChat, isFavorited: chatFavorited, messages: chatMessages, toggleFavorite: toggleChatFavorite } = useChat();
+  const {
+    resetChat,
+    isFavorited: chatFavorited,
+    messages: chatMessages,
+    cursor: chatCursor,
+    toggleFavorite: toggleChatFavorite,
+    loadConversation,
+  } = useChat();
+  const { conversas: conversasRecentes, arquivar: arquivarConversa } = useConversasRecentesContext();
+  const [historicoHovered, setHistoricoHovered] = useState(false);
   const firstUserMessage = chatMessages.find((m) => m.role === 'user');
   const chatPreview = firstUserMessage && firstUserMessage.role === 'user'
     ? firstUserMessage.text
@@ -61,6 +65,20 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
     .filter((x): x is { idA: string; idB: string; a: Vehicle; b: Vehicle } => x !== null);
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  // Arquiva a conversa em andamento sempre que ela muda. O upsert do hook usa
+  // o título (1ª msg do usuário) como chave, então a entrada é atualizada
+  // in-place conforme novas mensagens chegam.
+  useEffect(() => {
+    if (isAuthenticated && firstUserMessage) {
+      arquivarConversa({
+        titulo: firstUserMessage.text,
+        messages: chatMessages,
+        cursor: chatCursor,
+        favorited: chatFavorited,
+      });
+    }
+  }, [isAuthenticated, firstUserMessage?.text, chatMessages, chatCursor, chatFavorited]);
 
   useEffect(() => {
     Animated.parallel([
@@ -176,21 +194,62 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
           </>
         )}
 
-        {/* Conversas recentes */}
-        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>CONVERSAS RECENTES</Text>
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-          {RECENT_CONVERSATIONS.map((title) => (
-            <TouchableOpacity key={title} style={styles.conversationItem}>
-              <Feather name="message-circle" size={13} color={Colors.textMuted} />
-              <Text style={styles.conversationTitle} numberOfLines={1}>
-                {title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Conversas recentes — só para usuários logados */}
+        {isAuthenticated && (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 20, marginBottom: 8 }]}>
+              CONVERSAS RECENTES
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {conversasRecentes.length === 0 ? (
+                <Text style={styles.emptyFavorites}>Nenhuma conversa recente</Text>
+              ) : (
+                conversasRecentes.map((c, idx) => (
+                  <TouchableOpacity
+                    key={`${c.titulo}-${idx}`}
+                    style={styles.conversationItem}
+                    onPress={() => {
+                      loadConversation({
+                        messages: c.messages,
+                        cursor: c.cursor,
+                        favorited: c.favorited,
+                      });
+                      handleNavPress('Início');
+                      onClose();
+                    }}
+                  >
+                    <Feather name="message-circle" size={13} color={Colors.textMuted} />
+                    <Text style={styles.conversationTitle} numberOfLines={1}>
+                      {c.titulo}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </>
+        )}
+        {!isAuthenticated && <View style={{ flex: 1 }} />}
 
-        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Histórico </Text>
-        
+        {/* Histórico — item de navegação desativado */}
+        <View style={styles.historicoWrapper}>
+          <Pressable
+            onHoverIn={() => setHistoricoHovered(true)}
+            onHoverOut={() => setHistoricoHovered(false)}
+            onPress={() => setHistoricoHovered((h) => !h)}
+            {...(Platform.OS === 'web' ? { accessibilityLabel: HISTORICO_TOOLTIP } : {})}
+            style={styles.historicoNavItem}
+          >
+            <Feather name="book-open" size={16} color={Colors.textMuted} />
+            <Text style={styles.historicoNavLabel}>Histórico</Text>
+            <Feather name="lock" size={12} color={Colors.textHint} />
+          </Pressable>
+          {historicoHovered && (
+            <View style={styles.tooltip} pointerEvents="none">
+              <Text style={styles.tooltipText}>{HISTORICO_TOOLTIP}</Text>
+            </View>
+          )}
+        </View>
+
         {/* Rodapé — perfil */}
         <View style={styles.profileRow}>
           <TouchableOpacity
@@ -366,6 +425,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
     fontFamily: 'Sora_400Regular',
+  },
+  historicoWrapper: {
+    position: 'relative',
+    marginTop: 8,
+  },
+  historicoNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    opacity: 0.5,
+    ...(Platform.OS === 'web' ? ({ cursor: 'not-allowed' } as any) : null),
+  },
+  historicoNavLabel: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    flex: 1,
+    fontFamily: 'Sora_400Regular',
+  },
+  tooltip: {
+    position: 'absolute',
+    top: -30,
+    alignSelf: 'center',
+    backgroundColor: '#0B1116',
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Colors.radiusSm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+  tooltipText: {
+    color: Colors.textPrimary,
+    fontSize: 11,
+    fontFamily: 'Sora_500Medium',
   },
   profileRow: {
     flexDirection: 'row',
