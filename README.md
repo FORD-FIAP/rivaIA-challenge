@@ -49,45 +49,6 @@ Usamos ela também de referência na produção!
 
 ---
 
-## Telas e Funcionalidades
-
-### Início (Home)
-A tela principal reúne o chat com a RIVA, um card em destaque ("Carro da Semana"), grade de veículos e seção de favoritos.
-
-- **Chat com RIVA:** conversa guiada com roteiro pré-definido, animação de digitação e mensagens ricas (cards de veículo, gráfico radar, veredito, links e badges)
-- **Carro da Semana:** card em destaque com visual diferenciado
-- **Grade de Veículos:** listagem em 2 colunas com marca, modelo, motor, score e preço
-- **Favoritos:** grade dos veículos marcados como favorito (requer login)
-
-### Veículos
-Catálogo completo com busca e filtragem.
-
-- **Busca por texto:** filtra por marca, modelo ou versão em tempo real
-- **Filtros avançados:** marca, categoria, modelo e ano com seleção múltipla
-- **Ficha do Veículo:** painel deslizante com especificações completas: motor, desempenho, capacidade, dimensões, off-road, tecnologia e segurança, além de scores visuais
-
-### Comparar
-Comparativo lado a lado entre dois veículos.
-
-- **Gráfico Radar:** spider chart com 6 eixos — Performance, Conforto, Economia, Off-road, Tecnologia e Segurança
-- **Especificações completas:** motorização, capacidade, dimensões, off-road, tech e safety comparados
-- **Favoritar comparativo:** salva o par de veículos para acesso rápido pela Sidebar (requer login)
-
-### Perfil
-Área do usuário com informações e preferências.
-
-- **Dados do perfil:** nome, apelido e e-mail editáveis
-- **Preferências:** combustível e categoria favorita
-- **Logout:** encerra a sessão limpando os dados locais
-
-### Login
-Acionado por qualquer ação que exija autenticação (favoritar, salvar conversa).
-
-- Cadastro simples: nome completo + e-mail
-- Dados persistidos no AsyncStorage
-
----
-
 ## Arquitetura
 
 ```
@@ -103,26 +64,15 @@ src/
 ├── theme/            # Design tokens (cores, border-radius)
 └── types/            # Interfaces TypeScript para Vehicle
 ```
----
-
-## Design System
-
-Tema escuro com ciano como cor de destaque.
-
-| Token | Valor | Uso |
-|---|---|---|
-| `bg` | `#1E1A1B` | Fundo principal |
-| `surface` | `#0F1418` | Cards e painéis |
-| `accent` | `#05D3F8` | Destaque, CTAs, indicadores ativos |
-| `action` | `#009DDD` | Botões de ação |
-| `textPrimary` | `#E8F4FC` | Texto principal |
-| `textSecondary` | `#7BB8D8` | Texto de suporte |
-
-Tipografia: **Sora** em 4 pesos (400, 500, 600, 700). Border-radius padronizado de `6px` a `999px` (pill).
 
 ---
 
-### Integrates 
+## Integrates 
 
+- Beatriz Vieira de Novais - RM554746
+- Guilherme Abe - RM554743
+- Gustavo Ruiz Vieira Paulino - RM554779
+- Mariana Neugebauer Dourado - RM550494
+- Victor Pacífico Dias - RM558017
 
 Desenvolvido como desafio técnico para a **Riva**.
