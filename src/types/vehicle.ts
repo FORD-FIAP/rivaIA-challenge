@@ -1,6 +1,6 @@
 /** Representa um veículo listado no app */
 
-export type VehicleCategory = 'Picape' | 'Sedan' | 'SUV' | 'Esportivos';
+export type VehicleCategory = 'Picape' | 'Sedan' | 'SUV' | 'Esportivos' | 'Hatch' | 'Luxo';
 
 export interface VehicleScores {
   performance: number;

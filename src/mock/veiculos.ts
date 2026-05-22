@@ -1,4 +1,3 @@
-/** Dados mockados de veículos — substituir por API quando backend estiver pronto */
 import { Vehicle } from '../types/vehicle';
 import { fordPicapes, featuredVehicle as fordPicapeFeatured } from './Ford/Picape';
 import { fordMustangMachE, featuredVehicle as fordEsportivoFeatured } from './Ford/Esportivo';
@@ -14,11 +13,19 @@ import {
   eclipseCrossVersoes,
   outlanderPhevVersoes,
 } from './Mitsubishi/Suv';
+import {
+  featuredVehicle as ramPicapeFeatured,
+  ramRampageVersoes,
+  ram1500Versoes,
+  ram2500Versoes,
+  ram3500Versoes,
+} from './RAM/Picape';
+import { featuredVehicle as bydPicapeFeatured, bydPicapes } from './BYD/Picape';
+import { featuredVehicle as bydSuvFeatured, bydSuvs } from './BYD/SUV';
+import { featuredVehicle as bydSedanFeatured, bydSedans } from './BYD/Sedan';
+import { featuredVehicle as bydHatchFeatured, bydHatchs } from './BYD/Hatch';
+import { featuredVehicle as denzaLuxoFeatured, denzaVersoes } from './BYD/Luxo';
 
-// Cada fonte aparece como uma "seção" — adicione novos arrays/featured aqui
-// conforme novos arquivos forem sendo criados. Os IDs declarados em cada
-// arquivo são IGNORADOS: o agregador reatribui IDs sequenciais (1, 2, 3, ...)
-// pra garantir que sejam únicos no app inteiro.
 const sources: Vehicle[][] = [
   [fordPicapeFeatured],
   fordPicapes,
@@ -33,6 +40,21 @@ const sources: Vehicle[][] = [
   pajeroSportVersoes,
   eclipseCrossVersoes,
   outlanderPhevVersoes,
+  [ramPicapeFeatured],
+  ramRampageVersoes,
+  ram1500Versoes,
+  ram2500Versoes,
+  ram3500Versoes,
+  [bydPicapeFeatured],
+  bydPicapes,
+  [bydSuvFeatured],
+  bydSuvs,
+  [bydSedanFeatured],
+  bydSedans,
+  [bydHatchFeatured],
+  bydHatchs,
+  [denzaLuxoFeatured],
+  denzaVersoes,
 ];
 
 const all: Vehicle[] = sources.flat().map((v, i) => ({ ...v, id: String(i + 1) }));

@@ -29,23 +29,25 @@ export function FeaturedCard({ vehicle, onPress }: FeaturedCardProps) {
       <Text style={styles.yearBrand}>
         {vehicle.marca} · {vehicle.ano}
       </Text>
-      <Text style={styles.name}>{vehicle.versao}</Text>
-      <Text style={styles.engine}>{motor?.motor}</Text>
+      <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">{vehicle.versao}</Text>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        <Text style={styles.engine} numberOfLines={1} ellipsizeMode="tail">{motor?.motor}</Text>
+      </TouchableOpacity>
 
       {/* Especificações */}
       <View style={styles.specsRow}>
         <View style={styles.specItem}>
-          <Text style={styles.specValue}>{motor?.potencia}cv</Text>
+          <Text style={styles.specValue} numberOfLines={1} ellipsizeMode="tail">{motor?.potencia}cv</Text>
           <Text style={styles.specLabel}>POTÊNCIA</Text>
         </View>
         <View style={styles.specItem}>
-          <Text style={styles.specValue}>{motor?.torque}Nm</Text>
+          <Text style={styles.specValue} numberOfLines={1} ellipsizeMode="tail">{motor?.torque}Nm</Text>
           <Text style={styles.specLabel}>TORQUE</Text>
         </View>
-        <View style={styles.specItem}>
-          <Text style={styles.specValue}>{motor?.combustivel}</Text>
+        <TouchableOpacity style={styles.specItem} onPress={onPress} activeOpacity={0.7}>
+          <Text style={styles.specValue} numberOfLines={1} ellipsizeMode="tail">{motor?.combustivel}</Text>
           <Text style={styles.specLabel}>COMBUSTÍVEL</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Rodapé — preço e link */}
@@ -115,11 +117,14 @@ const styles = StyleSheet.create({
   },
   specsRow: {
     flexDirection: 'row',
-    gap: 24,
+    gap: 16,
     marginBottom: 16,
   },
   specItem: {
     gap: 2,
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   specValue: {
     color: Colors.textPrimary,

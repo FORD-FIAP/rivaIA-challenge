@@ -3,9 +3,9 @@ import { Vehicle } from '../../../types/vehicle';
 export const featuredVehicle: Vehicle = {
   id: '1',
   marca: 'FORD',
-  categoria: 'SUV',
+  categoria: 'Esportivos',
   modelo: 'Mustang Mach-E',
-  versao: 'Mustang Mach-E GT Performance',
+  versao: 'Mustang Mach-E GT',
   classificacao: 'SUV Elétrico Esportivo',
   ano: 2025,
   preco: 'R$486.000,00',

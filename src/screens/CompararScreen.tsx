@@ -686,7 +686,7 @@ function VehiclePickerModal({
             ))}
           </PickerFilterRow>
 
-          {availableCategories.length > 0 && (
+          {selectedBrands.length > 0 && availableCategories.length > 0 && (
             <PickerFilterRow label="CATEGORIA">
               {availableCategories.map((cat) => (
                 <PickerChip
