@@ -17,10 +17,17 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   rivaScript,
+  rivaScenarios,
   endOfScriptReply,
   ScriptedMessage,
   RivaMessage,
 } from '../mock/rivaChat';
+
+const DEFAULT_SCENARIO_ID = rivaScenarios[0].id;
+
+function getScenarioMessages(id: string): ScriptedMessage[] {
+  return rivaScenarios.find((s) => s.id === id)?.messages ?? rivaScript;
+}
 
 const STORAGE_KEY = '@riva/chat-history';
 const TYPING_DELAY_MS = 2200;
@@ -29,26 +36,34 @@ type ExtraMessage = RivaMessage & { id: string };
 
 type ChatState = {
   messages: ScriptedMessage[];
-  /** Índice do próximo item do `rivaScript` a ser revelado. */
   cursor: number;
-  /** A conversa atual está favoritada? */
   favorited: boolean;
+  scenarioId: string;
 };
 
 interface ChatContextValue {
   messages: ScriptedMessage[];
+  cursor: number;
+  scenarioId: string;
   hasConversation: boolean;
   isTyping: boolean;
   isFavorited: boolean;
   sendMessage: () => void;
   resetChat: () => void;
   toggleFavorite: () => void;
+  loadConversation: (snapshot: { messages: ScriptedMessage[]; cursor: number; favorited: boolean; scenarioId?: string }) => void;
+  startScenario: (id: string) => void;
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ChatState>({ messages: [], cursor: 0, favorited: false });
+  const [state, setState] = useState<ChatState>({
+    messages: [],
+    cursor: 0,
+    favorited: false,
+    scenarioId: DEFAULT_SCENARIO_ID,
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -64,6 +79,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               messages: parsed.messages,
               cursor: parsed.cursor,
               favorited: !!parsed.favorited,
+              scenarioId: typeof parsed.scenarioId === 'string' ? parsed.scenarioId : DEFAULT_SCENARIO_ID,
             });
           }
         }
@@ -83,7 +99,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const sendMessage = useCallback(() => {
     setState((prev) => {
-      const next = rivaScript[prev.cursor];
+      const script = getScenarioMessages(prev.scenarioId);
+      const next = script[prev.cursor];
       if (!next) {
         // Roteiro acabou: gera um turno genérico de usuário + resposta fim-de-script.
         const fallbackUser: ScriptedMessage = {
@@ -106,7 +123,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       if (next.role === 'user') {
         const userMsg = next;
-        const reply = rivaScript[prev.cursor + 1];
+        const reply = script[prev.cursor + 1];
         setIsTyping(true);
         if (reply && reply.role === 'riva') {
           setTimeout(() => {
@@ -140,24 +157,48 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const resetChat = useCallback(() => {
     setIsTyping(false);
-    setState({ messages: [], cursor: 0, favorited: false });
+    setState({ messages: [], cursor: 0, favorited: false, scenarioId: DEFAULT_SCENARIO_ID });
+  }, []);
+
+  const startScenario = useCallback((id: string) => {
+    setIsTyping(false);
+    setState({ messages: [], cursor: 0, favorited: false, scenarioId: id });
+    // Dispara o 1º turno do roteiro escolhido no próximo tick (depois do reset).
+    setTimeout(() => sendMessage(), 0);
   }, []);
 
   const toggleFavorite = useCallback(() => {
     setState((prev) => ({ ...prev, favorited: !prev.favorited }));
   }, []);
 
+  const loadConversation = useCallback(
+    (snapshot: { messages: ScriptedMessage[]; cursor: number; favorited: boolean; scenarioId?: string }) => {
+      setIsTyping(false);
+      setState({
+        messages: snapshot.messages,
+        cursor: snapshot.cursor,
+        favorited: snapshot.favorited,
+        scenarioId: snapshot.scenarioId ?? DEFAULT_SCENARIO_ID,
+      });
+    },
+    [],
+  );
+
   const value = useMemo<ChatContextValue>(
     () => ({
       messages: state.messages,
+      cursor: state.cursor,
+      scenarioId: state.scenarioId,
       hasConversation: state.messages.length > 0,
       isTyping,
       isFavorited: state.favorited,
       sendMessage,
       resetChat,
       toggleFavorite,
+      loadConversation,
+      startScenario,
     }),
-    [state.messages, state.favorited, isTyping, sendMessage, resetChat, toggleFavorite],
+    [state.messages, state.cursor, state.scenarioId, state.favorited, isTyping, sendMessage, resetChat, toggleFavorite, loadConversation, startScenario],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
