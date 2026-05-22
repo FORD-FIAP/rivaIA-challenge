@@ -24,6 +24,7 @@ import { FeaturedCard } from '../components/home/FeaturedCard';
 import { VeiculoCard } from '../components/home/VeiculoCard';
 import { Colors } from '../theme/colors';
 import { featuredVehicle, vehicles } from '../mock/veiculos';
+import { rivaScenarios } from '../mock/rivaChat';
 import { Vehicle } from '../types/vehicle';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 
@@ -47,7 +48,7 @@ export function HomeScreen() {
   const { user, isAuthenticated, requestLogin } = useAuth();
   const { favorites } = useFavoritesContext();
   const { recent } = useRecentlyViewedContext();
-  const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite } = useChat();
+  const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite, startScenario } = useChat();
 
   function handleToggleFavoriteChat() {
     if (isAuthenticated) {
@@ -153,6 +154,22 @@ export function HomeScreen() {
             </View>
 
             <View style={styles.bottomBlock}>
+              <View style={styles.suggestionsRow}>
+                {rivaScenarios.map((sc) => (
+                  <TouchableOpacity
+                    key={sc.id}
+                    style={styles.suggestionChip}
+                    onPress={() => startScenario(sc.id)}
+                    activeOpacity={0.75}
+                  >
+                    <MaterialCommunityIcons name="lightbulb-on-outline" size={12} color={Colors.accent} />
+                    <Text style={styles.suggestionLabel} numberOfLines={1}>
+                      {sc.pergunta}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <View style={styles.composerWrapper}>
                 <ChatInput onSend={handleSendMessage} />
               </View>
@@ -417,6 +434,30 @@ const styles = StyleSheet.create({
   },
   composerWrapper: {
     width: '100%',
+  },
+  suggestionsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Colors.radiusPill,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    maxWidth: '100%',
+  },
+  suggestionLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontFamily: 'Sora_500Medium',
   },
 
   floatingBtn: {
