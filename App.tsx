@@ -15,6 +15,7 @@ import { FavoritesProvider } from './src/context/FavoritesContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { ChatProvider } from './src/context/ChatContext';
 import { RecentlyViewedProvider } from './src/context/RecentlyViewedContext';
+import { ConversasRecentesProvider } from './src/context/ConversasRecentesContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { VeiculosScreen } from './src/screens/VeiculosScreen';
 import { CompararScreen } from './src/screens/CompararScreen';
@@ -71,6 +72,7 @@ export default function App() {
        <AuthProvider>
         <FavoritesProvider>
          <RecentlyViewedProvider>
+         <ConversasRecentesProvider>
          <ChatProvider>
           <StatusBar style="light" />
           {showDesktopFrame ? (
@@ -83,6 +85,7 @@ export default function App() {
             <AppScreens />
           )}
          </ChatProvider>
+         </ConversasRecentesProvider>
          </RecentlyViewedProvider>
         </FavoritesProvider>
        </AuthProvider>
