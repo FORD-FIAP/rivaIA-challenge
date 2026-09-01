@@ -1,5 +1,5 @@
 /** Ponto de entrada do app RIVA — carrega fonte Sora antes de renderizar */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ActivityIndicator, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -22,6 +22,9 @@ import { CompararScreen } from './src/screens/CompararScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { Sidebar } from './src/components/home/Sidebar';
+import { BottomTabBar } from './src/components/navigation/BottomTabBar';
+import { IntroAnimation } from './src/components/splash/IntroAnimation';
+import { Colors } from './src/theme/colors';
 
 const DESKTOP_BREAKPOINT = 600;
 
@@ -29,24 +32,28 @@ function AppScreens() {
   const { activeScreen, sidebarOpen, closeSidebar } = useNavigation();
 
   return (
-    <>
-      {activeScreen === 'Veículos' ? (
-        <VeiculosScreen />
-      ) : activeScreen === 'Comparar' ? (
-        <CompararScreen />
-      ) : activeScreen === 'Perfil' ? (
-        <ProfileScreen />
-      ) : (
-        <HomeScreen />
-      )}
+    <View style={{ flex: 1, backgroundColor: Colors.bg }}>
+      <View style={{ flex: 1 }}>
+        {activeScreen === 'Veículos' ? (
+          <VeiculosScreen />
+        ) : activeScreen === 'Comparar' ? (
+          <CompararScreen />
+        ) : activeScreen === 'Perfil' ? (
+          <ProfileScreen />
+        ) : (
+          <HomeScreen />
+        )}
+      </View>
+      <BottomTabBar />
       <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
       <LoginScreen />
-    </>
+    </View>
   );
 }
 
 export default function App() {
   const { width: windowWidth } = useWindowDimensions();
+  const [showIntro, setShowIntro] = useState(true);
   const [fontsLoaded] = useFonts({
     Sora_400Regular,
     Sora_500Medium,
@@ -57,8 +64,8 @@ export default function App() {
   if (!fontsLoaded) {
     return (
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: '#1E1A1B', alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#05D3F8" />
+        <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={Colors.accent} />
         </View>
       </SafeAreaProvider>
     );
@@ -79,10 +86,14 @@ export default function App() {
             <View style={styles.webContainer}>
               <View style={styles.phoneFrame}>
                 <AppScreens />
+                {showIntro && <IntroAnimation onFinish={() => setShowIntro(false)} />}
               </View>
             </View>
           ) : (
-            <AppScreens />
+            <>
+              <AppScreens />
+              {showIntro && <IntroAnimation onFinish={() => setShowIntro(false)} />}
+            </>
           )}
          </ChatProvider>
          </ConversasRecentesProvider>

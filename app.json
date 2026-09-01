@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "A RIVA usa suas fotos para anexar imagens de veículos na conversa.",
+        "NSMicrophoneUsageDescription": "A RIVA usa o microfone para você conversar por voz."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,13 +25,25 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "experiments": {
-      "baseUrl": "/rivaIA-challenge"
-    }
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A RIVA usa suas fotos para anexar imagens de veículos na conversa."
+        }
+      ],
+      "expo-font",
+      "expo-asset"
+    ]
   }
 }

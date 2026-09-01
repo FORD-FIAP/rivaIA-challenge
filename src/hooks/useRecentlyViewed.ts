@@ -1,29 +1,28 @@
-import { useState, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@riva/recently_viewed';
 const MAX_ITEMS = 8;
 
-function load(): string[] {
+async function load(): Promise<string[]> {
   try {
-    if (Platform.OS === 'web') {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    }
-  } catch {}
-  return [];
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
 
 function save(value: string[]) {
-  try {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    }
-  } catch {}
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(value)).catch(() => {});
 }
 
 export function useRecentlyViewed() {
-  const [recent, setRecent] = useState<string[]>(() => load());
+  const [recent, setRecent] = useState<string[]>([]);
+
+  useEffect(() => {
+    load().then(setRecent);
+  }, []);
 
   const trackView = useCallback((id: string) => {
     setRecent((prev) => {

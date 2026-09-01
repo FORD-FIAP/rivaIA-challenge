@@ -65,7 +65,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigate('Início')} style={styles.backBtn}>
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: Colors.action,
-    borderRadius: Colors.radiusMd,
+    borderRadius: Colors.radiusPill,
     paddingVertical: 14,
     marginBottom: 24,
   },
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -30,
     alignSelf: 'center',
-    backgroundColor: '#0B1116',
+    backgroundColor: Colors.surface2,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     borderRadius: Colors.radiusSm,

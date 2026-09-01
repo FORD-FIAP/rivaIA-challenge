@@ -132,7 +132,7 @@ export function CompararScreen() {
     : null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -503,8 +503,8 @@ function TableRow({
   return (
     <View style={styles.tableRow}>
       {label ? <Text style={[styles.tableCell, styles.tableCellAttr]}>{label}</Text> : <View style={[styles.tableCell, styles.tableCellAttr]} />}
-      <Text style={[styles.tableCell, { color: highlight ? colorA : Colors.textSecondary }]}>{valA ?? '—'}</Text>
-      <Text style={[styles.tableCell, { color: highlight ? colorB : Colors.textSecondary }]}>{valB ?? '—'}</Text>
+      <Text style={[styles.tableCell, { color: highlight ? colorA : Colors.textValue }]}>{valA ?? '—'}</Text>
+      <Text style={[styles.tableCell, { color: highlight ? colorB : Colors.textValue }]}>{valB ?? '—'}</Text>
     </View>
   );
 }
@@ -542,7 +542,7 @@ function TableRowNum({
             <Text style={[styles.betterLabel, { color: colorA }]}>MELHOR</Text>
           </View>
         )}
-        <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
+        <Text style={{ color: Colors.textValue, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
           {strA ?? '—'}
         </Text>
       </View>
@@ -553,7 +553,7 @@ function TableRowNum({
             <Text style={[styles.betterLabel, { color: colorB }]}>MELHOR</Text>
           </View>
         )}
-        <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
+        <Text style={{ color: Colors.textValue, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
           {strB ?? '—'}
         </Text>
       </View>
@@ -794,7 +794,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: Colors.textPrimary,
-    fontSize: 24,
+    fontSize: 30,
+    letterSpacing: -1,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
@@ -846,7 +847,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -890,7 +891,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,107,107,0.12)',
   },
   imageArea: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
@@ -1222,7 +1223,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 52,
     borderRadius: Colors.radiusMd,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

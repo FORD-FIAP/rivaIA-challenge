@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScriptedMessage } from '../mock/rivaChat';
 
 const STORAGE_KEY = '@riva/conversas_recentes';
@@ -22,36 +22,32 @@ function isValid(item: any): item is ConversaArquivada {
   );
 }
 
-function load(): ConversaArquivada[] {
+async function load(): Promise<ConversaArquivada[]> {
   try {
-    if (Platform.OS === 'web') {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isValid);
-    }
-  } catch {}
-  return [];
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValid);
+  } catch {
+    return [];
+  }
 }
 
 function save(value: ConversaArquivada[]) {
-  try {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    }
-  } catch {}
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(value)).catch(() => {});
 }
 
 export function useConversasRecentes() {
-  const [conversas, setConversas] = useState<ConversaArquivada[]>(() => load());
+  const [conversas, setConversas] = useState<ConversaArquivada[]>([]);
 
-  // Sobrescreve o storage com a versão saneada (descarta entries inválidos
-  // que possam ter sobrado de versões anteriores).
   useEffect(() => {
-    save(conversas);
-    // só na montagem
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Sobrescreve o storage com a versão saneada (descarta entries inválidos
+    // que possam ter sobrado de versões anteriores).
+    load().then((loaded) => {
+      setConversas(loaded);
+      save(loaded);
+    });
   }, []);
 
   const arquivar = useCallback((conversa: ConversaArquivada) => {

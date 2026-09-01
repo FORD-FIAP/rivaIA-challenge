@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
 import { useFavoritesContext } from '../../context/FavoritesContext';
@@ -259,7 +260,12 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
     <View style={scoreStyles.row}>
       <Text style={scoreStyles.label}>{label}</Text>
       <View style={scoreStyles.barTrack}>
-        <View style={[scoreStyles.barFill, { width: `${(value / 10) * 100}%` as any }]} />
+        <LinearGradient
+          colors={Colors.gradientAction as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[scoreStyles.barFill, { width: `${(value / 10) * 100}%` as any }]}
+        />
       </View>
       <Text style={scoreStyles.value}>{value.toFixed(1)}</Text>
     </View>
@@ -480,7 +486,6 @@ const scoreStyles = StyleSheet.create({
   },
   barFill: {
     height: '100%',
-    backgroundColor: Colors.accent,
     borderRadius: Colors.radiusPill,
   },
   value: {

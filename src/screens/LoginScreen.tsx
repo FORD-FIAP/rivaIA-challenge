@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   miniCard: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     borderRadius: Colors.radiusMd,
     padding: 10,
     alignItems: 'center',
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: Colors.action,
-    borderRadius: Colors.radiusMd,
+    borderRadius: Colors.radiusPill,
     paddingVertical: 14,
   },
   ctaDisabled: {

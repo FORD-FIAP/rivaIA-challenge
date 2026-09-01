@@ -1,54 +1,51 @@
-/** Tela inicial do app RIVA — hero fullscreen, composer e listagem de veículos */
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  useWindowDimensions,
-  Animated,
-} from 'react-native';
+/** Tela inicial do app RIVA — hero fullscreen com chat conversacional */
+import React, { useRef, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/home/Header';
 import { RivaOrb } from '../components/home/RivaOrb';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
-import { useFavoritesContext } from '../context/FavoritesContext';
-import { useRecentlyViewedContext } from '../context/RecentlyViewedContext';
 import { useChat } from '../context/ChatContext';
-import { ChatInput } from '../components/home/ChatInput';
+import { ChatInput, ChatAttachment } from '../components/home/ChatInput';
 import { ChatThread } from '../components/home/ChatThread';
-import { FeaturedCard } from '../components/home/FeaturedCard';
-import { VeiculoCard } from '../components/home/VeiculoCard';
 import { Colors } from '../theme/colors';
-import { featuredVehicle, vehicles } from '../mock/veiculos';
-import { rivaScenarios } from '../mock/rivaChat';
-import { Vehicle } from '../types/vehicle';
-import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 
-const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
+function getSaudacao(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
-/** Escolhe o veículo da semana de forma determinística — muda no domingo 00h local. */
-function pickWeeklyVehicle(list: Vehicle[]): Vehicle {
-  const now = new Date();
-  const startOfWeek = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() - now.getDay(),
-  );
-  const weekIndex = Math.floor(startOfWeek.getTime() / MS_IN_WEEK);
-  return list[((weekIndex % list.length) + list.length) % list.length];
+/** Frases criativas exibidas abaixo da saudação — uma nova a cada visita à Home. */
+const SUBTITLES_CREATIVAS = [
+  'O que você quer descobrir sobre carros hoje?',
+  'Bora encontrar o carro perfeito pra você?',
+  'SUV, sedã ou picape? Me conta o que bateu o olho.',
+  'Me diga o que você sonha em guiar.',
+  'Qual carro tá rodando na sua cabeça hoje?',
+  'Vamos achar seu próximo carro juntos?',
+  'Me conta: cidade, estrada ou trilha?',
+  'Tô pronta pra achar sua próxima garagem.',
+];
+
+// Índice fora do componente: garante que a frase mude a cada vez que a Home
+// é montada, em vez de depender da sorte de um Math.random() isolado.
+let subtitleIndex = Math.floor(Math.random() * SUBTITLES_CREATIVAS.length);
+function nextSubtitleCreativa(): string {
+  subtitleIndex = (subtitleIndex + 1) % SUBTITLES_CREATIVAS.length;
+  return SUBTITLES_CREATIVAS[subtitleIndex];
 }
 
 export function HomeScreen() {
-  const { height: windowHeight } = useWindowDimensions();
-  const { openSidebar, navigate } = useNavigation();
+  const { openSidebar } = useNavigation();
   const { user, isAuthenticated, requestLogin } = useAuth();
-  const { favorites } = useFavoritesContext();
-  const { recent } = useRecentlyViewedContext();
-  const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite, startScenario } = useChat();
+  const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite } = useChat();
+
+  const saudacao = useMemo(getSaudacao, []);
+  const subtitleCreativa = useMemo(nextSubtitleCreativa, []);
 
   function handleToggleFavoriteChat() {
     if (isAuthenticated) {
@@ -57,31 +54,8 @@ export function HomeScreen() {
       requestLogin({ type: 'chat' }, toggleFavorite);
     }
   }
+
   const chatAnim = useRef(new Animated.Value(hasConversation ? 1 : 0)).current;
-  const allVehicles = useMemo<Vehicle[]>(() => [featuredVehicle, ...vehicles], []);
-  const favoriteVehicles = allVehicles.filter((v) => favorites.includes(v.id));
-  const recentVehicles = useMemo(
-    () => recent
-      .map((id) => allVehicles.find((v) => v.id === id))
-      .filter((v): v is Vehicle => v !== undefined),
-    [recent, allVehicles],
-  );
-  const weeklyFeatured = useMemo(() => pickWeeklyVehicle(allVehicles), [allVehicles]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(80);
-  const scrollRef = useRef<ScrollView>(null);
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-
-  const heroHeight = windowHeight - headerHeight;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, { toValue: 6, duration: 600, useNativeDriver: true }),
-        Animated.timing(bounceAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [bounceAnim]);
 
   useEffect(() => {
     Animated.timing(chatAnim, {
@@ -91,235 +65,109 @@ export function HomeScreen() {
     }).start();
   }, [hasConversation, chatAnim]);
 
-  function handleSendMessage(_message: string) {
-    // Chat mockado: o texto digitado é descartado e o próximo turno
-    // do roteiro (mock/rivaChat.ts) é revelado.
+  function handleSendMessage(_message: string, _attachment?: ChatAttachment) {
+    // Chat mockado: o texto/anexo é descartado e o próximo turno
+    // do roteiro (mock/rivaChat.ts) é revelado. Anexos passam a valer quando
+    // o backend com IA (Gemini Flash) estiver integrado.
     sendMessage();
   }
 
-  function handleVehiclePress(vehicle: Vehicle) {
-    setSelectedVehicle(vehicle);
-  }
-
-  function scrollToVehicles() {
-    scrollRef.current?.scrollTo({ y: heroHeight, animated: true });
-  }
-
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <Header onMenuPress={openSidebar} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <Header onMenuPress={openSidebar} isAuthenticated={isAuthenticated} userInitial={user?.name?.charAt(0)} />
 
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero — ocupa a tela toda abaixo do header (sem conversa) ou
-            vira modo chat (com conversa em andamento) */}
-        <View style={[styles.hero, { height: heroHeight }, hasConversation && styles.heroChat]}>
+      <View style={styles.hero}>
 
-          {/* Camada Greeting — fica visível enquanto não há conversa */}
-          <Animated.View
-            style={[
-              styles.heroLayer,
-              styles.greetingLayer,
-              {
-                opacity: chatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-                transform: [
-                  {
-                    translateY: chatAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, -16],
-                    }),
-                  },
-                ],
-              },
-            ]}
-            pointerEvents={hasConversation ? 'none' : 'auto'}
-          >
-            <View style={styles.greetingBlock}>
-              <RivaOrb />
-              <View style={styles.greetingText}>
-                <Text style={styles.title}>
-                  Olá{user ? <>, <Text style={styles.titleAccent}>{user.name}</Text></> : null}!
-                </Text>
-                <Text style={styles.subtitle}>
-                  {user && user.preferences && user.preferences.trim().length > 0
-                    ? `Vi que você curte ${user.preferences.trim()}. Quer ver opções nesse estilo?`
-                    : 'O que gostaria de ver hoje?'}
-                </Text>
-              </View>
+        {/* Camada Greeting — fica visível enquanto não há conversa */}
+        <Animated.View
+          style={[
+            styles.heroLayer,
+            styles.greetingLayer,
+            {
+              opacity: chatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              transform: [
+                {
+                  translateY: chatAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -16],
+                  }),
+                },
+              ],
+            },
+          ]}
+          pointerEvents={hasConversation ? 'none' : 'auto'}
+        >
+          <View style={styles.greetingBlock}>
+            <RivaOrb />
+            <View style={styles.greetingText}>
+              <Text style={styles.title}>
+                {saudacao}{user ? `, ${user.name}` : ''}.
+              </Text>
+              <Text style={styles.subtitle}>
+                {user && user.preferences && user.preferences.trim().length > 0
+                  ? `Vi que você curte ${user.preferences.trim()}. Quer ver opções nesse estilo?`
+                  : subtitleCreativa}
+              </Text>
             </View>
+          </View>
 
-            <View style={styles.bottomBlock}>
-              <View style={styles.suggestionsRow}>
-                {rivaScenarios.map((sc) => (
-                  <TouchableOpacity
-                    key={sc.id}
-                    style={styles.suggestionChip}
-                    onPress={() => startScenario(sc.id)}
-                    activeOpacity={0.75}
-                  >
-                    <MaterialCommunityIcons name="lightbulb-on-outline" size={12} color={Colors.accent} />
-                    <Text style={styles.suggestionLabel} numberOfLines={1}>
-                      {sc.pergunta}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View style={styles.composerWrapper}>
-                <ChatInput onSend={handleSendMessage} />
-              </View>
-
-              <Animated.View style={[styles.floatingBtn, { transform: [{ translateY: bounceAnim }] }]}>
-                <TouchableOpacity style={styles.floatingBtnInner} onPress={scrollToVehicles}>
-                  <Text style={styles.floatingBtnLabel}>Veículos da semana</Text>
-                  <Feather name="chevron-down" size={14} color={Colors.textSecondary} />
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </Animated.View>
-
-          {/* Camada Chat — entra com fade/translate quando há conversa */}
-          <Animated.View
-            style={[
-              styles.heroLayer,
-              styles.chatLayer,
-              {
-                opacity: chatAnim,
-                transform: [
-                  {
-                    translateY: chatAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [16, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-            pointerEvents={hasConversation ? 'auto' : 'none'}
-          >
-            <View style={styles.chatHeader}>
-              <View style={styles.chatHeaderLeft}>
-                <RivaOrb size={28} />
-                <View>
-                  <Text style={styles.chatHeaderTitle}>RIVA</Text>
-                  <Text style={styles.chatHeaderSubtitle}>Assistente de veículos</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={handleToggleFavoriteChat}
-                style={styles.chatFavBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <MaterialCommunityIcons
-                  name={isFavorited ? 'star' : 'star-outline'}
-                  size={18}
-                  color={isFavorited ? Colors.accent : Colors.textMuted}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.chatThreadWrapper}>
-              <ChatThread messages={messages} isTyping={isTyping} />
-            </View>
-
+          <View style={styles.bottomBlock}>
             <View style={styles.composerWrapper}>
               <ChatInput onSend={handleSendMessage} />
             </View>
-          </Animated.View>
-
-        </View>
-
-        {/* Seção de veículos — escondida quando há chat ativo */}
-        {!hasConversation && (
-        <View style={styles.vehiclesSection}>
-          {/* Badge carro da semana */}
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <MaterialCommunityIcons name="fire" size={14} color="#E8A020" />
-              <Text style={styles.badgeLabel}>CARRO DA SEMANA</Text>
-            </View>
           </View>
+        </Animated.View>
 
-          {/* Card destaque */}
-          <View style={styles.featuredWrapper}>
-            <FeaturedCard
-              vehicle={weeklyFeatured}
-              onPress={() => handleVehiclePress(weeklyFeatured)}
-            />
-          </View>
-
-          {/* Favoritos */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Favoritos</Text>
-          </View>
-          {!isAuthenticated || favoriteVehicles.length === 0 ? (
-            <View style={styles.favoritesEmpty}>
-              <MaterialCommunityIcons name="star-outline" size={20} color={Colors.textMuted} />
-              <Text style={styles.favoritesEmptyText}>
-                Favorite algum conteúdo que gostou!
-              </Text>
+        {/* Camada Chat — entra com fade/translate quando há conversa */}
+        <Animated.View
+          style={[
+            styles.heroLayer,
+            styles.chatLayer,
+            {
+              opacity: chatAnim,
+              transform: [
+                {
+                  translateY: chatAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [16, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+          pointerEvents={hasConversation ? 'auto' : 'none'}
+        >
+          <View style={styles.chatHeader}>
+            <View style={styles.chatHeaderLeft}>
+              <RivaOrb size={28} />
+              <View>
+                <Text style={styles.chatHeaderTitle}>RIVA</Text>
+                <Text style={styles.chatHeaderSubtitle}>Assistente de veículos</Text>
+              </View>
             </View>
-          ) : (
-            <View style={[styles.grid, { marginBottom: 28 }]}>
-              {favoriteVehicles.map((vehicle) => (
-                <View key={vehicle.id} style={styles.gridItem}>
-                  <VeiculoCard
-                    vehicle={vehicle}
-                    onPress={() => handleVehiclePress(vehicle)}
-                  />
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Grid */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Veículos mais analisados</Text>
-            <TouchableOpacity onPress={() => navigate('Veículos')}>
-              <Text style={styles.seeAll}>Ver tudo</Text>
+            <TouchableOpacity
+              onPress={handleToggleFavoriteChat}
+              style={styles.chatFavBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons
+                name={isFavorited ? 'star' : 'star-outline'}
+                size={18}
+                color={isFavorited ? Colors.accent : Colors.textMuted}
+              />
             </TouchableOpacity>
           </View>
 
-          {!isAuthenticated ? (
-            <View style={styles.favoritesEmpty}>
-              <MaterialCommunityIcons name="history" size={20} color={Colors.textMuted} />
-              <Text style={styles.favoritesEmptyText}>
-                Faça login para ver os veículos que você analisou recentemente.
-              </Text>
-            </View>
-          ) : recentVehicles.length === 0 ? (
-            <View style={styles.favoritesEmpty}>
-              <MaterialCommunityIcons name="history" size={20} color={Colors.textMuted} />
-              <Text style={styles.favoritesEmptyText}>
-                Você ainda não analisou nenhum veículo. Abra um carro para começar!
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.grid}>
-              {recentVehicles.map((vehicle) => (
-                <View key={vehicle.id} style={styles.gridItem}>
-                  <VeiculoCard
-                    vehicle={vehicle}
-                    onPress={() => handleVehiclePress(vehicle)}
-                  />
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-        )}
-      </ScrollView>
+          <View style={styles.chatThreadWrapper}>
+            <ChatThread messages={messages} isTyping={isTyping} />
+          </View>
 
-      <VeiculoFicha
-        vehicle={selectedVehicle}
-        onClose={() => setSelectedVehicle(null)}
-      />
+          <View style={styles.composerWrapper}>
+            <ChatInput onSend={handleSendMessage} />
+          </View>
+        </Animated.View>
 
+      </View>
     </SafeAreaView>
   );
 }
@@ -329,11 +177,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bg,
   },
-  scroll: {
-    flex: 1,
-  },
-
   hero: {
+    flex: 1,
     position: 'relative',
   },
   heroLayer: {
@@ -354,7 +199,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 8,
   },
-  heroChat: {},
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -387,15 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chatResetBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   chatThreadWrapper: {
     flex: 1,
     minHeight: 0,
@@ -411,14 +246,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Colors.textPrimary,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -1,
     textAlign: 'center',
     fontFamily: 'Sora_700Bold',
-  },
-  titleAccent: {
-    color: Colors.accent,
   },
   subtitle: {
     color: Colors.textSecondary,
@@ -434,117 +266,5 @@ const styles = StyleSheet.create({
   },
   composerWrapper: {
     width: '100%',
-  },
-  suggestionsRow: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Colors.radiusPill,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    maxWidth: '100%',
-  },
-  suggestionLabel: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    fontFamily: 'Sora_500Medium',
-  },
-
-  floatingBtn: {
-    alignItems: 'center',
-  },
-  floatingBtnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  floatingBtnLabel: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontFamily: 'Sora_400Regular',
-  },
-
-  vehiclesSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 48,
-    paddingTop: 8,
-  },
-  badgeRow: {
-    marginBottom: 14,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(232,160,32,0.12)',
-    borderWidth: 1,
-    borderColor: '#E8A020',
-    borderRadius: Colors.radiusPill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  badgeLabel: {
-    color: '#E8A020',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    fontFamily: 'Sora_700Bold',
-  },
-  featuredWrapper: {
-    marginBottom: 28,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-  },
-  seeAll: {
-    color: Colors.accent,
-    fontSize: 13,
-    fontFamily: 'Sora_400Regular',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  gridItem: {
-    width: '47.5%',
-  },
-  favoritesEmpty: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    backgroundColor: Colors.surface,
-    borderRadius: Colors.radiusLg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 28,
-  },
-  favoritesEmptyText: {
-    flex: 1,
-    color: Colors.textMuted,
-    fontSize: 13,
-    fontFamily: 'Sora_400Regular',
   },
 });

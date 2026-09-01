@@ -65,7 +65,7 @@ export function VeiculosScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header desta tela */}
       <View style={styles.header}>
         <View>
@@ -180,7 +180,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: Colors.textPrimary,
-    fontSize: 24,
+    fontSize: 30,
+    letterSpacing: -1,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },

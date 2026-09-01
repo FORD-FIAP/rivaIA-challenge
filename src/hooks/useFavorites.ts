@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@riva_favorites';
 const COMPARISON_KEY = '@riva_favorite_comparisons';
@@ -14,33 +14,26 @@ function pairsEqual(p: ComparisonPair, q: ComparisonPair): boolean {
   return p[0] === q[0] && p[1] === q[1];
 }
 
-function load<T>(key: string, fallback: T): T {
+async function load<T>(key: string, fallback: T): Promise<T> {
   try {
-    if (Platform.OS === 'web') {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    }
-  } catch {}
-  return fallback;
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function save<T>(key: string, value: T) {
-  try {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, JSON.stringify(value));
-    }
-  } catch {}
+  AsyncStorage.setItem(key, JSON.stringify(value)).catch(() => {});
 }
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<string[]>(() => load(STORAGE_KEY, [] as string[]));
-  const [comparisons, setComparisons] = useState<ComparisonPair[]>(() =>
-    load(COMPARISON_KEY, [] as ComparisonPair[]),
-  );
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [comparisons, setComparisons] = useState<ComparisonPair[]>([]);
 
   useEffect(() => {
-    setFavorites(load(STORAGE_KEY, [] as string[]));
-    setComparisons(load(COMPARISON_KEY, [] as ComparisonPair[]));
+    load<string[]>(STORAGE_KEY, []).then(setFavorites);
+    load<ComparisonPair[]>(COMPARISON_KEY, []).then(setComparisons);
   }, []);
 
   const toggle = useCallback((id: string) => {
