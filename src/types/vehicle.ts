@@ -1,15 +1,7 @@
 /** Representa um veículo listado no app */
+import { ImageSourcePropType } from 'react-native';
 
 export type VehicleCategory = 'Picape' | 'Sedan' | 'SUV' | 'Esportivos' | 'Hatch' | 'Luxo';
-
-export interface VehicleScores {
-  performance: number;
-  conforto: number;
-  offRoad?: number;
-  economia?: number;
-  tecnologia?: number;
-  seguranca?: number;
-}
 
 export interface MotorizacaoDesempenho {
   motor: string;
@@ -76,7 +68,8 @@ export interface Vehicle {
   ano: number;
   preco: string;
   isFeatured?: boolean;
-  scores?: VehicleScores;
+  /** Fotos do veículo (require locais ou { uri }), exibidas em carrossel na ficha. */
+  imagens?: ImageSourcePropType[];
   motorizacao_desempenho?: MotorizacaoDesempenho;
   capacidade?: Capacidade;
   dimensoes?: Dimensoes;

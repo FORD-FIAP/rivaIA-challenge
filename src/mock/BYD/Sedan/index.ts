@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico com memória, aquecimento e ventilação (motorista e passageiro) — bancos em couro premium',
   },
-  scores: {
-    performance: 10.0,
-    conforto: 9.5,
-    economia: 9.0,
-    offRoad: 2.0,
-    tecnologia: 9.5,
-    seguranca: 9.5,
-  },
 };
 
 export const bydSedans: Vehicle[] = [
@@ -120,14 +112,6 @@ export const bydSedans: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista)',
     },
-    scores: {
-      performance: 6.5,
-      conforto: 8.0,
-      economia: 10.0,
-      offRoad: 2.0,
-      tecnologia: 8.5,
-      seguranca: 8.5,
-    },
   },
   {
     id: '3',
@@ -182,14 +166,6 @@ export const bydSedans: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com aquecimento e ventilação (motorista e passageiro) — bancos esportivos',
-    },
-    scores: {
-      performance: 10.0,
-      conforto: 9.0,
-      economia: 9.0,
-      offRoad: 2.0,
-      tecnologia: 9.5,
-      seguranca: 9.5,
     },
   },
 ];

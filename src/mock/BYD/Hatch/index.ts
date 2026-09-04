@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico (motorista)',
   },
-  scores: {
-    performance: 7.5,
-    conforto: 8.0,
-    economia: 9.5,
-    offRoad: 2.0,
-    tecnologia: 8.5,
-    seguranca: 8.5,
-  },
 };
 
 export const bydHatchs: Vehicle[] = [
@@ -120,14 +112,6 @@ export const bydHatchs: Vehicle[] = [
       carregador_wireless: 'NÃO',
       ajuste_banco: 'Manual',
     },
-    scores: {
-      performance: 5.5,
-      conforto: 7.0,
-      economia: 10.0,
-      offRoad: 1.5,
-      tecnologia: 7.0,
-      seguranca: 7.0,
-    },
   },
   {
     id: '3',
@@ -182,14 +166,6 @@ export const bydHatchs: Vehicle[] = [
       sensor_estacionamento: 'NÃO - Câmera de ré apenas',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Manual',
-    },
-    scores: {
-      performance: 6.0,
-      conforto: 7.5,
-      economia: 9.5,
-      offRoad: 1.5,
-      tecnologia: 7.5,
-      seguranca: 7.5,
     },
   },
 ];

@@ -22,7 +22,6 @@ import { CompararScreen } from './src/screens/CompararScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { Sidebar } from './src/components/home/Sidebar';
-import { BottomTabBar } from './src/components/navigation/BottomTabBar';
 import { IntroAnimation } from './src/components/splash/IntroAnimation';
 import { Colors } from './src/theme/colors';
 
@@ -44,7 +43,6 @@ function AppScreens() {
           <HomeScreen />
         )}
       </View>
-      <BottomTabBar />
       <Sidebar visible={sidebarOpen} onClose={closeSidebar} />
       <LoginScreen />
     </View>

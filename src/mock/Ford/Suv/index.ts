@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico 10 posições + lombar (motorista) / Elétrico 4 posições (passageiro) — bancos em couro com aquecimento e ventilação',
   },
-  scores: {
-    performance: 7.0,
-    conforto: 9.0,
-    economia: 7.5,
-    offRoad: 4.5,
-    tecnologia: 9.0,
-    seguranca: 9.0,
-  },
 };
 
 export const fordTerritory: Vehicle[] = [];
@@ -121,14 +113,6 @@ export const fordBroncoSport: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista) — bancos em couro',
-    },
-    scores: {
-      performance: 8.5,
-      conforto: 8.0,
-      economia: 6.5,
-      offRoad: 9.0,
-      tecnologia: 9.0,
-      seguranca: 9.5,
     },
   },
 ];

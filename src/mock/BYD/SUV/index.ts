@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico com memória, aquecimento e ventilação (motorista e passageiro) — bancos premium 7 lugares',
   },
-  scores: {
-    performance: 9.5,
-    conforto: 9.5,
-    economia: 9.0,
-    offRoad: 4.5,
-    tecnologia: 10.0,
-    seguranca: 9.5,
-  },
 };
 
 export const bydSuvs: Vehicle[] = [
@@ -120,14 +112,6 @@ export const bydSuvs: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Manual',
     },
-    scores: {
-      performance: 6.5,
-      conforto: 7.5,
-      economia: 9.0,
-      offRoad: 3.0,
-      tecnologia: 7.5,
-      seguranca: 7.0,
-    },
   },
   {
     id: '3',
@@ -182,14 +166,6 @@ export const bydSuvs: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista)',
-    },
-    scores: {
-      performance: 7.5,
-      conforto: 8.0,
-      economia: 9.0,
-      offRoad: 3.0,
-      tecnologia: 8.5,
-      seguranca: 8.5,
     },
   },
   {
@@ -246,14 +222,6 @@ export const bydSuvs: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista)',
     },
-    scores: {
-      performance: 7.5,
-      conforto: 8.0,
-      economia: 9.5,
-      offRoad: 3.5,
-      tecnologia: 8.5,
-      seguranca: 8.5,
-    },
   },
   {
     id: '5',
@@ -308,14 +276,6 @@ export const bydSuvs: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com aquecimento e ventilação (motorista)',
-    },
-    scores: {
-      performance: 8.0,
-      conforto: 8.5,
-      economia: 9.5,
-      offRoad: 4.0,
-      tecnologia: 9.0,
-      seguranca: 8.5,
     },
   },
   {
@@ -372,14 +332,6 @@ export const bydSuvs: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com aquecimento e ventilação (motorista e passageiro)',
     },
-    scores: {
-      performance: 9.0,
-      conforto: 9.0,
-      economia: 9.5,
-      offRoad: 6.0,
-      tecnologia: 9.5,
-      seguranca: 9.0,
-    },
   },
   {
     id: '7',
@@ -434,14 +386,6 @@ export const bydSuvs: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com aquecimento, ventilação e massagem (motorista e passageiro) — 7 lugares',
-    },
-    scores: {
-      performance: 9.5,
-      conforto: 9.5,
-      economia: 9.0,
-      offRoad: 4.5,
-      tecnologia: 9.5,
-      seguranca: 9.0,
     },
   },
 ];

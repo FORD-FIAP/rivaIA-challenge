@@ -9,10 +9,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { RivaOrb } from '../components/home/RivaOrb';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { VeiculoResultCard } from '../components/veiculos/VeiculoResultCard';
-import { FilterModal, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterModal';
+import { FilterSheet, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterFlow';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 import { Colors } from '../theme/colors';
 import { vehicles, featuredVehicle } from '../mock/veiculos';
@@ -55,17 +54,8 @@ export function VeiculosScreen() {
   const showResults = hasSearch || hasFilters;
   const results = showResults ? applyFilters(search, appliedFilters) : [];
 
-  const activeChips = appliedFilters.brands.map((b) => ({ key: b, label: b.charAt(0) + b.slice(1).toLowerCase(), type: 'brands' as const }));
-
-  function removeChip(type: keyof FilterState, value: string | number) {
-    setAppliedFilters((prev) => ({
-      ...prev,
-      [type]: (prev[type] as (string | number)[]).filter((v) => v !== value),
-    }));
-  }
-
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* Header desta tela */}
       <View style={styles.header}>
         <View>
@@ -94,33 +84,20 @@ export function VeiculosScreen() {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.filterButton} onPress={() => setFilterOpen(true)}>
-          <Feather name="sliders" size={16} color={Colors.textPrimary} />
+        <TouchableOpacity
+          style={[styles.filterButton, filterOpen && styles.filterButtonActive]}
+          onPress={() => setFilterOpen((v) => !v)}
+        >
+          <Feather name="sliders" size={16} color={filterOpen ? '#FFFFFF' : Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      {showResults ? (
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Chips de filtros ativos */}
-          {activeChips.length > 0 && (
-            <View style={styles.activeFiltersRow}>
-              {activeChips.map((chip) => (
-                <TouchableOpacity
-                  key={chip.key}
-                  style={styles.activeChip}
-                  onPress={() => removeChip(chip.type, chip.key)}
-                >
-                  <Text style={styles.activeChipLabel}>{chip.label}</Text>
-                  <Feather name="x" size={12} color={Colors.surface} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity onPress={() => setAppliedFilters(EMPTY_FILTERS)}>
-                <Text style={styles.clearAll}>Limpar tudo</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Lista de resultados */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={!showResults ? styles.scrollEmptyContent : undefined}
+        showsVerticalScrollIndicator={false}
+      >
+        {showResults ? (
           <View style={styles.resultsList}>
             {results.length === 0 ? (
               <View style={styles.emptyResults}>
@@ -137,22 +114,24 @@ export function VeiculosScreen() {
               ))
             )}
           </View>
-        </ScrollView>
-      ) : (
-        /* Empty state */
-        <View style={styles.emptyState}>
-          <RivaOrb />
-          <Text style={styles.emptyStateTitle}>Comece sua busca</Text>
-          <Text style={styles.emptyStateText}>
-            Use a lupa para pesquisar por nome ou{'\n'}abra o filtro para encontrar o carro ideal.
-          </Text>
-        </View>
-      )}
+        ) : (
+          /* Empty state */
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <MaterialCommunityIcons name="car-search-outline" size={30} color={Colors.textMuted} />
+            </View>
+            <Text style={styles.emptyStateTitle}>Comece sua busca</Text>
+            <Text style={styles.emptyStateText}>
+              Use a lupa para pesquisar por nome ou{'\n'}abra o filtro para encontrar o carro ideal.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
 
-      <FilterModal
+      <FilterSheet
         visible={filterOpen}
-        applied={appliedFilters}
-        onApply={setAppliedFilters}
+        filters={appliedFilters}
+        onChange={setAppliedFilters}
         onClose={() => setFilterOpen(false)}
       />
 
@@ -175,8 +154,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
+    paddingTop: 28,
+    paddingBottom: 16,
+    minHeight: 82,
   },
   headerTitle: {
     color: Colors.textPrimary,
@@ -206,7 +186,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 20,
   },
   searchBar: {
     flex: 1,
@@ -236,39 +217,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterButtonActive: {
+    backgroundColor: Colors.action,
+    borderColor: Colors.action,
+  },
   scroll: {
     flex: 1,
   },
-  activeFiltersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 20,
-    marginBottom: 14,
-  },
-  activeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.accent,
-    borderRadius: Colors.radiusPill,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  activeChipLabel: {
-    color: Colors.surface,
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-  },
-  clearAll: {
-    color: Colors.textMuted,
-    fontSize: 13,
-    fontFamily: 'Sora_400Regular',
+  scrollEmptyContent: {
+    flexGrow: 1,
   },
   resultsList: {
     paddingHorizontal: 20,
+    paddingTop: 4,
     gap: 20,
     paddingBottom: 40,
   },
@@ -294,6 +255,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 40,
     gap: 16,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   emptyStateTitle: {
     color: Colors.textPrimary,

@@ -1,5 +1,5 @@
 /** Drawer lateral — overlay absoluto (não usa Modal para ficar dentro do phone frame) */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,20 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../theme/colors';
-import { useNavigation } from '../../context/NavigationContext';
+import { useNavigation, AppScreen } from '../../context/NavigationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 import { useConversasRecentesContext } from '../../context/ConversasRecentesContext';
+import { useFavoritesContext } from '../../context/FavoritesContext';
+import { ConversaArquivada } from '../../hooks/useConversasRecentes';
 import { noticias } from '../../mock/noticias';
+import { vehicles, featuredVehicle } from '../../mock/veiculos';
+import { Vehicle } from '../../types/vehicle';
+
+const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
 interface SidebarProps {
   visible: boolean;
@@ -24,15 +30,56 @@ interface SidebarProps {
 }
 
 const DRAWER_OFFSET = 400;
+const MAX_RECENTES_VISIVEIS = 7;
+const MAX_FAVORITOS_VISIVEIS = 4;
+
+const NAV_ITEMS: { label: AppScreen; icon: React.ComponentProps<typeof Feather>['name'] | null; iconMci?: React.ComponentProps<typeof MaterialCommunityIcons>['name'] }[] = [
+  { label: 'Início',   icon: 'home'        },
+  { label: 'Veículos', icon: null, iconMci: 'car-side' },
+  { label: 'Comparar', icon: 'bar-chart-2' },
+];
+
+/** Seleciona os itens exibidos direto na sidebar: no máx. 4 favoritados e 7 no total,
+ * mantendo a ordem de recência. O restante só aparece na tela "Todos os Chats". */
+function selecionarRecentesVisiveis(conversas: ConversaArquivada[]) {
+  const visiveis: ConversaArquivada[] = [];
+  let favoritosContados = 0;
+  for (const c of conversas) {
+    if (visiveis.length >= MAX_RECENTES_VISIVEIS) break;
+    if (c.favorited) {
+      if (favoritosContados >= MAX_FAVORITOS_VISIVEIS) continue;
+      favoritosContados++;
+    }
+    visiveis.push(c);
+  }
+  return visiveis;
+}
 
 export function Sidebar({ visible, onClose }: SidebarProps) {
   const insets = useSafeAreaInsets();
-  const { navigate } = useNavigation();
+  const { activeScreen, navigate, openVehicle } = useNavigation();
   const { user, isAuthenticated, requestLogin } = useAuth();
   const { resetChat, loadConversation } = useChat();
   const { conversas: conversasRecentes } = useConversasRecentesContext();
+  const { favorites } = useFavoritesContext();
+  const favoriteVehicles = favorites
+    .map((id) => ALL_VEHICLES.find((v) => v.id === id))
+    .filter((v): v is Vehicle => v !== undefined);
+  const [view, setView] = useState<'menu' | 'chats'>('menu');
+  const [filtro, setFiltro] = useState<'todos' | 'favoritos'>('todos');
+  const [filtroAberto, setFiltroAberto] = useState(false);
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  const recentesVisiveis = useMemo(
+    () => selecionarRecentesVisiveis(conversasRecentes),
+    [conversasRecentes],
+  );
+  const temMaisRecentes = conversasRecentes.length > recentesVisiveis.length;
+
+  const chatsFiltrados = filtro === 'favoritos'
+    ? conversasRecentes.filter((c) => c.favorited)
+    : conversasRecentes;
 
   useEffect(() => {
     Animated.parallel([
@@ -47,6 +94,11 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
         useNativeDriver: true,
       }),
     ]).start();
+    if (!visible) {
+      setView('menu');
+      setFiltro('todos');
+      setFiltroAberto(false);
+    }
   }, [visible]);
 
   function handleNavigate(screen: Parameters<typeof navigate>[0]) {
@@ -56,6 +108,30 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   function handleNewChat() {
     resetChat();
     handleNavigate('Início');
+    onClose();
+  }
+
+  function handleAbrirConversa(c: ConversaArquivada) {
+    loadConversation({
+      messages: c.messages,
+      favorited: c.favorited,
+    });
+    handleNavigate('Início');
+    onClose();
+  }
+
+  function handleAbrirVeiculo(id: string) {
+    openVehicle(id);
+    onClose();
+  }
+
+  function handleAvatarPress() {
+    if (!isAuthenticated) {
+      onClose();
+      requestLogin({ type: 'login' });
+      return;
+    }
+    handleNavigate('Perfil');
     onClose();
   }
 
@@ -77,103 +153,188 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
           { transform: [{ translateX: slideAnim }] },
         ]}
       >
-        {/* Cabeçalho */}
-        <View style={styles.drawerHeader}>
-          <Image
-            source={require('../../../assets/logo-riva-navbar.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Feather name="x" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-          {/* Histórico de conversas */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>HISTÓRICO</Text>
-            {conversasRecentes.length > 0 && (
-              <Text style={styles.sectionCaption}>Todos os chats</Text>
-            )}
-          </View>
-          {!isAuthenticated ? (
-            <Text style={styles.emptyText}>Faça login para ver seu histórico de conversas</Text>
-          ) : conversasRecentes.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma conversa recente</Text>
-          ) : (
-            conversasRecentes.map((c, idx) => (
-              <TouchableOpacity
-                key={`${c.titulo}-${idx}`}
-                style={styles.listItem}
-                onPress={() => {
-                  loadConversation({
-                    messages: c.messages,
-                    cursor: c.cursor,
-                    favorited: c.favorited,
-                  });
-                  handleNavigate('Início');
-                  onClose();
-                }}
-              >
-                <Feather name="message-circle" size={13} color={Colors.textMuted} />
-                <Text style={styles.listItemLabel} numberOfLines={1}>
-                  {c.titulo}
-                </Text>
+        {view === 'chats' ? (
+          <>
+            {/* Cabeçalho da tela "Todos os Chats" */}
+            <View style={styles.drawerHeader}>
+              <TouchableOpacity onPress={() => setView('menu')} style={styles.closeButton}>
+                <Feather name="chevron-left" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
-            ))
-          )}
+              <Text style={styles.chatsScreenTitle}>Chats</Text>
+              <TouchableOpacity onPress={() => setFiltroAberto((v) => !v)} style={styles.closeButton}>
+                <Feather name="filter" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
 
-          {/* Notícias — atualidades do mercado automotivo trazidas pela IA da RIVA */}
-          <Text style={[styles.sectionLabel, { marginTop: 20 }]}>NOTÍCIAS</Text>
-          {noticias.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma novidade por enquanto</Text>
-          ) : (
-            noticias.map((n) => (
-              <View key={n.id} style={styles.listItem}>
-                <Feather name="file-text" size={13} color={Colors.textMuted} />
-                <Text style={styles.listItemLabel} numberOfLines={1}>
-                  {n.titulo}
-                </Text>
+            {filtroAberto && (
+              <View style={styles.filterDropdown}>
+                <TouchableOpacity
+                  style={styles.filterOption}
+                  onPress={() => { setFiltro('todos'); setFiltroAberto(false); }}
+                >
+                  <Feather name={filtro === 'todos' ? 'check' : 'message-circle'} size={14} color={filtro === 'todos' ? Colors.accent : Colors.textMuted} />
+                  <Text style={styles.filterOptionLabel}>Todos os chats</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.filterOption}
+                  onPress={() => { setFiltro('favoritos'); setFiltroAberto(false); }}
+                >
+                  <Feather name={filtro === 'favoritos' ? 'check' : 'star'} size={14} color={filtro === 'favoritos' ? Colors.accent : Colors.textMuted} />
+                  <Text style={styles.filterOptionLabel}>Favoritos</Text>
+                </TouchableOpacity>
               </View>
-            ))
-          )}
-        </ScrollView>
-
-        {/* Rodapé — perfil + novo chat */}
-        <View style={styles.profileRow}>
-          <TouchableOpacity
-            style={styles.profilePill}
-            onPress={() => {
-              if (!isAuthenticated) {
-                onClose();
-                requestLogin({ type: 'login' });
-                return;
-              }
-              handleNavigate('Perfil');
-              onClose();
-            }}
-          >
-            {isAuthenticated && user ? (
-              <>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarLetter}>{user.name.charAt(0).toUpperCase()}</Text>
-                </View>
-                <Text style={styles.profilePillName} numberOfLines={1}>{user.name}</Text>
-              </>
-            ) : (
-              <>
-                <View style={styles.avatar}>
-                  <Feather name="user" size={14} color={Colors.textPrimary} />
-                </View>
-                <Text style={styles.profilePillName} numberOfLines={1}>Entrar</Text>
-              </>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.newChatIcon} onPress={handleNewChat}>
-            <Feather name="plus" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {chatsFiltrados.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  {filtro === 'favoritos' ? 'Nenhum chat favoritado ainda' : 'Nenhuma conversa recente'}
+                </Text>
+              ) : (
+                chatsFiltrados.map((c, idx) => (
+                  <TouchableOpacity
+                    key={`${c.titulo}-${idx}`}
+                    style={styles.listItem}
+                    onPress={() => handleAbrirConversa(c)}
+                  >
+                    <Feather name="message-circle" size={13} color={Colors.textMuted} />
+                    <Text style={styles.listItemLabel} numberOfLines={1}>
+                      {c.titulo}
+                    </Text>
+                    {c.favorited && <Feather name="star" size={13} color={Colors.accent} />}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </>
+        ) : (
+          <>
+            {/* Cabeçalho */}
+            <View style={styles.drawerHeader}>
+              <Image
+                source={require('../../../assets/logo-riva-navbar.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Feather name="x" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {/* Navegação principal */}
+              <View style={styles.navList}>
+                {NAV_ITEMS.map((item) => {
+                  const isActive = item.label === activeScreen;
+                  return (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={styles.navItem}
+                      onPress={() => { handleNavigate(item.label); onClose(); }}
+                    >
+                      {item.icon ? (
+                        <Feather
+                          name={item.icon}
+                          size={18}
+                          color={isActive ? Colors.textPrimary : Colors.textMuted}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name={item.iconMci!}
+                          size={18}
+                          color={isActive ? Colors.textPrimary : Colors.textMuted}
+                        />
+                      )}
+                      <Text style={[styles.navItemLabel, isActive && styles.navItemLabelActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Favoritos */}
+              <Text style={[styles.sectionLabel, { marginTop: 24 }]}>FAVORITOS</Text>
+              {!isAuthenticated ? (
+                <Text style={styles.emptyText}>Faça login para salvar seus veículos favoritos</Text>
+              ) : favoriteVehicles.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhum veículo favoritado ainda</Text>
+              ) : (
+                favoriteVehicles.map((v) => (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={styles.listItem}
+                    onPress={() => handleAbrirVeiculo(v.id)}
+                  >
+                    <Feather name="star" size={13} color={Colors.accent} />
+                    <Text style={styles.listItemLabel} numberOfLines={1}>
+                      {v.versao}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+
+              {/* Recentes */}
+              <Text style={[styles.sectionLabel, { marginTop: 24 }]}>RECENTES</Text>
+              {!isAuthenticated ? (
+                <Text style={styles.emptyText}>Faça login para ver seus chats recentes</Text>
+              ) : recentesVisiveis.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhuma conversa recente</Text>
+              ) : (
+                <>
+                  {recentesVisiveis.map((c, idx) => (
+                    <TouchableOpacity
+                      key={`${c.titulo}-${idx}`}
+                      style={styles.listItem}
+                      onPress={() => handleAbrirConversa(c)}
+                    >
+                      <Feather name="message-circle" size={13} color={Colors.textMuted} />
+                      <Text style={styles.listItemLabel} numberOfLines={1}>
+                        {c.titulo}
+                      </Text>
+                      {c.favorited && <Feather name="star" size={13} color={Colors.accent} />}
+                    </TouchableOpacity>
+                  ))}
+                  {temMaisRecentes && (
+                    <TouchableOpacity onPress={() => setView('chats')}>
+                      <Text style={styles.verMaisLink}>Veja mais</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              {/* Notícias — atualidades do mercado automotivo trazidas pela IA da RIVA */}
+              <Text style={[styles.sectionLabel, { marginTop: 20 }]}>NOTÍCIAS</Text>
+              {noticias.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhuma novidade por enquanto</Text>
+              ) : (
+                noticias.map((n) => (
+                  <View key={n.id} style={styles.listItem}>
+                    <Feather name="file-text" size={13} color={Colors.textMuted} />
+                    <Text style={styles.listItemLabel} numberOfLines={1}>
+                      {n.titulo}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Rodapé — avatar/perfil + novo chat */}
+            <View style={styles.footerRow}>
+              <TouchableOpacity style={styles.avatar} onPress={handleAvatarPress}>
+                {isAuthenticated && user ? (
+                  <Text style={styles.avatarLetter}>{user.name.charAt(0).toUpperCase()}</Text>
+                ) : (
+                  <Feather name="user" size={16} color={Colors.textPrimary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.newChatButton} onPress={handleNewChat}>
+                <Feather name="plus" size={16} color="#FFFFFF" />
+                <Text style={styles.newChatLabel}>Novo chat</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </Animated.View>
     </View>
   );
@@ -181,7 +342,7 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   drawer: {
@@ -206,10 +367,57 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  sectionHeader: {
+  chatsScreenTitle: {
+    color: Colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Sora_700Bold',
+  },
+  filterDropdown: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: Colors.surface2,
+    borderRadius: Colors.radiusMd,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 6,
+    zIndex: 10,
+    elevation: 10,
+  },
+  filterOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  filterOptionLabel: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontFamily: 'Sora_500Medium',
+  },
+  navList: {
+    gap: 2,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 11,
+  },
+  navItemLabel: {
+    color: Colors.textMuted,
+    fontSize: 15,
+    fontFamily: 'Sora_500Medium',
+  },
+  navItemLabelActive: {
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
   },
   sectionLabel: {
     color: Colors.textMuted,
@@ -219,17 +427,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_600SemiBold',
     marginBottom: 8,
   },
-  sectionCaption: {
-    color: Colors.textHint,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-    marginBottom: 8,
-  },
   emptyText: {
     color: Colors.textHint,
     fontSize: 13,
     fontFamily: 'Sora_400Regular',
     paddingVertical: 4,
+  },
+  verMaisLink: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontFamily: 'Sora_600SemiBold',
+    paddingVertical: 8,
   },
   listItem: {
     flexDirection: 'row',
@@ -243,7 +451,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Sora_400Regular',
   },
-  profileRow: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -252,35 +460,10 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     marginTop: 12,
   },
-  newChatIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.action,
-  },
-  profilePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingRight: 16,
-    paddingLeft: 4,
-    paddingVertical: 4,
-    borderRadius: Colors.radiusPill,
-    backgroundColor: Colors.surface2,
-  },
-  profilePillName: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Sora_500Medium',
-    maxWidth: 120,
-  },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.action,
     alignItems: 'center',
     justifyContent: 'center',
@@ -290,5 +473,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
+  },
+  newChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 18,
+    borderRadius: Colors.radiusPill,
+    backgroundColor: Colors.action,
+  },
+  newChatLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
   },
 });

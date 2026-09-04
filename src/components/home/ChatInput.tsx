@@ -1,4 +1,4 @@
-/** Composer principal da Home — "Pergunte à RIVA...", com anexo de imagem e gravação de voz */
+/** Composer principal da Home — "Chat Riva", com anexo de imagem e gravação de voz */
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
@@ -82,7 +82,7 @@ export function ChatInput({ onSend }: ChatInputProps) {
       ) : (
         <TextInput
           style={[styles.input, webNoOutline]}
-          placeholder="Pergunte à RIVA"
+          placeholder="Chat Riva"
           placeholderTextColor={Colors.textHint}
           value={text}
           onChangeText={setText}
@@ -92,21 +92,25 @@ export function ChatInput({ onSend }: ChatInputProps) {
         />
       )}
 
+      <View style={styles.divider} />
+
       <View style={styles.footer}>
         <TouchableOpacity style={styles.addBtn} onPress={handlePickImage}>
-          <Feather name="plus" size={14} color={Colors.textSecondary} />
+          <Feather name="plus" size={16} color={Colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.addBtn, isRecording && styles.addBtnRecording]}
-          onPress={handleToggleRecording}
-        >
-          <Feather name="mic" size={14} color={isRecording ? Colors.textPrimary : Colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.footerRight}>
+          <TouchableOpacity
+            style={[styles.addBtn, isRecording && styles.addBtnRecording]}
+            onPress={handleToggleRecording}
+          >
+            <Feather name="mic" size={16} color={isRecording ? Colors.textPrimary : Colors.textSecondary} />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-          <Feather name="arrow-right" size={14} color={Colors.textPrimary} />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+            <Feather name="arrow-right" size={16} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -167,10 +171,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Sora_400Regular',
   },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   addBtn: {

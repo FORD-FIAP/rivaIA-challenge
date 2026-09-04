@@ -59,14 +59,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro preto + interior Night Edition escurecido + rodas pretas 22" + capô esportivo',
   },
-  scores: {
-    performance: 9.5,
-    conforto: 9.5,
-    economia: 4.5,
-    offRoad: 8.5,
-    tecnologia: 10.0,
-    seguranca: 9.0,
-  },
 };
 
 export const ramRampageVersoes: Vehicle[] = [
@@ -128,14 +120,6 @@ export const ramRampageVersoes: Vehicle[] = [
       carregador_wireless: 'NÃO',
       ajuste_banco: 'Manual — chave presencial de série',
     },
-    scores: {
-      performance: 7.0,
-      conforto: 7.5,
-      economia: 8.5,
-      offRoad: 7.5,
-      tecnologia: 7.0,
-      seguranca: 7.5,
-    },
   },
   {
     id: '2',
@@ -194,14 +178,6 @@ export const ramRampageVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista) / Elétrico (passageiro) — bancos em couro + grade dianteira com design exclusivo Rebel + lanternas escurecidas',
-    },
-    scores: {
-      performance: 7.5,
-      conforto: 8.0,
-      economia: 8.0,
-      offRoad: 8.5,
-      tecnologia: 8.5,
-      seguranca: 9.0,
     },
   },
   {
@@ -262,14 +238,6 @@ export const ramRampageVersoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista e passageiro) — bancos em couro + detalhes pretos Night Edition + lanternas escurecidas',
     },
-    scores: {
-      performance: 7.5,
-      conforto: 8.5,
-      economia: 8.0,
-      offRoad: 8.0,
-      tecnologia: 9.0,
-      seguranca: 9.0,
-    },
   },
   {
     id: '4',
@@ -328,14 +296,6 @@ export const ramRampageVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico 12 posições (motorista) / Elétrico (passageiro) — bancos em couro + lanternas escurecidas + pneus Seal Inside™',
-    },
-    scores: {
-      performance: 9.0,
-      conforto: 8.5,
-      economia: 6.5,
-      offRoad: 8.0,
-      tecnologia: 9.0,
-      seguranca: 9.0,
     },
   },
 ];
@@ -399,14 +359,6 @@ export const ram1500Versoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro bicolor Bison Brown/Sea Salt + rodas diamantadas 20" + acabamentos cromados',
     },
-    scores: {
-      performance: 9.5,
-      conforto: 9.5,
-      economia: 4.5,
-      offRoad: 8.5,
-      tecnologia: 10.0,
-      seguranca: 9.0,
-    },
   },
 ];
 
@@ -469,14 +421,6 @@ export const ram2500Versoes: Vehicle[] = [
       carregador_wireless: 'NÃO',
       ajuste_banco: 'Elétrico (motorista) — bancos em couro',
     },
-    scores: {
-      performance: 8.0,
-      conforto: 8.0,
-      economia: 3.5,
-      offRoad: 8.5,
-      tecnologia: 7.0,
-      seguranca: 7.5,
-    },
   },
   {
     id: '2',
@@ -535,14 +479,6 @@ export const ram2500Versoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro preto + detalhes Night Edition escurecidos',
-    },
-    scores: {
-      performance: 8.0,
-      conforto: 8.5,
-      economia: 3.5,
-      offRoad: 8.5,
-      tecnologia: 8.5,
-      seguranca: 8.5,
     },
   },
 ];
@@ -606,14 +542,6 @@ export const ram3500Versoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro preto + detalhes Night Edition escurecidos + rodas 18" uso misto',
     },
-    scores: {
-      performance: 9.0,
-      conforto: 9.0,
-      economia: 3.0,
-      offRoad: 9.0,
-      tecnologia: 9.0,
-      seguranca: 8.5,
-    },
   },
   {
     id: '2',
@@ -672,14 +600,6 @@ export const ram3500Versoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro premium estilo western Longhorn + acabamentos cromados exclusivos + rodas 20"',
-    },
-    scores: {
-      performance: 9.0,
-      conforto: 9.0,
-      economia: 3.5,
-      offRoad: 9.0,
-      tecnologia: 9.0,
-      seguranca: 8.5,
     },
   },
 ];

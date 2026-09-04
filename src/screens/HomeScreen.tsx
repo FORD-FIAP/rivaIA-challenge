@@ -1,6 +1,6 @@
 /** Tela inicial do app RIVA — hero fullscreen com chat conversacional */
 import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/home/Header';
@@ -19,33 +19,12 @@ function getSaudacao(): string {
   return 'Boa noite';
 }
 
-/** Frases criativas exibidas abaixo da saudação — uma nova a cada visita à Home. */
-const SUBTITLES_CREATIVAS = [
-  'O que você quer descobrir sobre carros hoje?',
-  'Bora encontrar o carro perfeito pra você?',
-  'SUV, sedã ou picape? Me conta o que bateu o olho.',
-  'Me diga o que você sonha em guiar.',
-  'Qual carro tá rodando na sua cabeça hoje?',
-  'Vamos achar seu próximo carro juntos?',
-  'Me conta: cidade, estrada ou trilha?',
-  'Tô pronta pra achar sua próxima garagem.',
-];
-
-// Índice fora do componente: garante que a frase mude a cada vez que a Home
-// é montada, em vez de depender da sorte de um Math.random() isolado.
-let subtitleIndex = Math.floor(Math.random() * SUBTITLES_CREATIVAS.length);
-function nextSubtitleCreativa(): string {
-  subtitleIndex = (subtitleIndex + 1) % SUBTITLES_CREATIVAS.length;
-  return SUBTITLES_CREATIVAS[subtitleIndex];
-}
-
 export function HomeScreen() {
   const { openSidebar } = useNavigation();
   const { user, isAuthenticated, requestLogin } = useAuth();
   const { messages, hasConversation, isTyping, isFavorited, sendMessage, toggleFavorite } = useChat();
 
   const saudacao = useMemo(getSaudacao, []);
-  const subtitleCreativa = useMemo(nextSubtitleCreativa, []);
 
   function handleToggleFavoriteChat() {
     if (isAuthenticated) {
@@ -65,15 +44,17 @@ export function HomeScreen() {
     }).start();
   }, [hasConversation, chatAnim]);
 
-  function handleSendMessage(_message: string, _attachment?: ChatAttachment) {
-    // Chat mockado: o texto/anexo é descartado e o próximo turno
-    // do roteiro (mock/rivaChat.ts) é revelado. Anexos passam a valer quando
-    // o backend com IA (Gemini Flash) estiver integrado.
-    sendMessage();
+  function handleSendMessage(message: string, attachment?: ChatAttachment) {
+    // Anexos (imagem/áudio) ficam prontos no ChatInput, mas só passam a valer
+    // de verdade quando o backend com IA (Gemini Flash) estiver integrado.
+    // Por ora, ao menos garantimos um retorno visível na conversa.
+    const texto = message.trim()
+      || (attachment?.imageUri ? '📷 Imagem anexada' : attachment?.audioUri ? '🎤 Mensagem de voz' : '');
+    sendMessage(texto);
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Header onMenuPress={openSidebar} isAuthenticated={isAuthenticated} userInitial={user?.name?.charAt(0)} />
 
       <View style={styles.hero}>
@@ -98,17 +79,14 @@ export function HomeScreen() {
           pointerEvents={hasConversation ? 'none' : 'auto'}
         >
           <View style={styles.greetingBlock}>
-            <RivaOrb />
-            <View style={styles.greetingText}>
-              <Text style={styles.title}>
-                {saudacao}{user ? `, ${user.name}` : ''}.
-              </Text>
-              <Text style={styles.subtitle}>
-                {user && user.preferences && user.preferences.trim().length > 0
-                  ? `Vi que você curte ${user.preferences.trim()}. Quer ver opções nesse estilo?`
-                  : subtitleCreativa}
-              </Text>
-            </View>
+            <Image
+              source={require('../../assets/logo-riva.png')}
+              style={styles.greetingLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>
+              {saudacao}{user ? `, ${user.name}` : ''}.
+            </Text>
           </View>
 
           <View style={styles.bottomBlock}>
@@ -182,7 +160,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   greetingLayer: {
     alignItems: 'center',
@@ -237,12 +215,13 @@ const styles = StyleSheet.create({
   },
   greetingBlock: {
     alignItems: 'center',
-    gap: 38,
+    gap: 14,
     marginTop: '18%',
   },
-  greetingText: {
-    alignItems: 'center',
-    gap: 2,
+  greetingLogo: {
+    width: 136,
+    height: 136,
+    borderRadius: Colors.radiusLg,
   },
   title: {
     color: Colors.textPrimary,
@@ -251,13 +230,6 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     textAlign: 'center',
     fontFamily: 'Sora_700Bold',
-  },
-  subtitle: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '400',
-    textAlign: 'center',
-    fontFamily: 'Sora_400Regular',
   },
   bottomBlock: {
     width: '100%',

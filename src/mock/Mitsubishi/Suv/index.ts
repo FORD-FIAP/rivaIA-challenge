@@ -56,14 +56,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico com memória de posição (motorista) — bancos em couro bordô com Heat Guard',
   },
-  scores: {
-    performance: 7.5,
-    conforto: 8.5,
-    economia: 7.0,
-    offRoad: 9.5,
-    tecnologia: 8.5,
-    seguranca: 9.0,
-  },
 };
 
 
@@ -122,14 +114,6 @@ export const pajeroSportVersoes: Vehicle[] = [
       carregador_wireless: 'NÃO',
       ajuste_banco: 'Elétrico (motorista) — bancos em couro',
     },
-    scores: {
-      performance: 7.0,
-      conforto: 7.5,
-      economia: 7.0,
-      offRoad: 9.0,
-      tecnologia: 7.0,
-      seguranca: 7.5,
-    },
   },
   {
     id: '3',
@@ -184,14 +168,6 @@ export const pajeroSportVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória (motorista) — bancos em couro',
-    },
-    scores: {
-      performance: 7.0,
-      conforto: 8.0,
-      economia: 7.0,
-      offRoad: 9.0,
-      tecnologia: 8.0,
-      seguranca: 8.5,
     },
   },
   {
@@ -248,14 +224,6 @@ export const pajeroSportVersoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória (motorista e passageiro) — bancos em couro com Heat Guard',
     },
-    scores: {
-      performance: 7.5,
-      conforto: 8.5,
-      economia: 7.0,
-      offRoad: 9.5,
-      tecnologia: 8.5,
-      seguranca: 9.0,
-    },
   },
   {
     id: '5',
@@ -310,14 +278,6 @@ export const pajeroSportVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros + câmera 360°',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória (motorista e passageiro) — bancos couro preto com bordô e Heat Guard',
-    },
-    scores: {
-      performance: 7.5,
-      conforto: 8.5,
-      economia: 7.0,
-      offRoad: 9.5,
-      tecnologia: 8.5,
-      seguranca: 9.0,
     },
   },
 ];
@@ -378,14 +338,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       carregador_wireless: 'SIM - Carregador por indução de série',
       ajuste_banco: 'Manual com ajuste de altura',
     },
-    scores: {
-      performance: 6.5,
-      conforto: 7.5,
-      economia: 8.5,
-      offRoad: 4.0,
-      tecnologia: 7.5,
-      seguranca: 7.0,
-    },
   },
   {
     id: '7',
@@ -440,14 +392,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       sensor_estacionamento: 'Sensores traseiros de série',
       carregador_wireless: 'SIM - Carregador por indução de série',
       ajuste_banco: 'Elétrico (motorista) — chave presencial',
-    },
-    scores: {
-      performance: 6.5,
-      conforto: 8.0,
-      economia: 8.5,
-      offRoad: 4.0,
-      tecnologia: 8.0,
-      seguranca: 7.5,
     },
   },
   {
@@ -504,14 +448,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista) — bancos com camurça preta e detalhes escurecidos',
     },
-    scores: {
-      performance: 6.5,
-      conforto: 8.0,
-      economia: 8.5,
-      offRoad: 4.0,
-      tecnologia: 8.5,
-      seguranca: 7.5,
-    },
   },
   {
     id: '9',
@@ -566,14 +502,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       sensor_estacionamento: 'NÃO - Câmera de ré apenas',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista) — bancos em couro preto e camurça — Edição limitada 120 unidades',
-    },
-    scores: {
-      performance: 6.5,
-      conforto: 8.5,
-      economia: 8.5,
-      offRoad: 4.0,
-      tecnologia: 8.5,
-      seguranca: 7.5,
     },
   },
   {
@@ -630,14 +558,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista) — bancos em couro',
     },
-    scores: {
-      performance: 7.0,
-      conforto: 8.5,
-      economia: 8.0,
-      offRoad: 6.5,
-      tecnologia: 8.5,
-      seguranca: 8.5,
-    },
   },
   {
     id: '11',
@@ -692,14 +612,6 @@ export const eclipseCrossVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros integrados à câmera 360°',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico (motorista) — bancos em camurça preta com detalhes escurecidos',
-    },
-    scores: {
-      performance: 7.0,
-      conforto: 9.0,
-      economia: 8.0,
-      offRoad: 6.5,
-      tecnologia: 9.0,
-      seguranca: 9.0,
     },
   },
 ];
@@ -760,14 +672,6 @@ export const outlanderPhevVersoes: Vehicle[] = [
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória (motorista) + aquecimento — bancos em couro — 7 lugares',
     },
-    scores: {
-      performance: 8.5,
-      conforto: 9.0,
-      economia: 9.5,
-      offRoad: 6.5,
-      tecnologia: 9.5,
-      seguranca: 9.5,
-    },
   },
   {
     id: '13',
@@ -822,14 +726,6 @@ export const outlanderPhevVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros + câmera 360° + Power Tailgate',
       carregador_wireless: 'SIM',
       ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) + banco traseiro reclinável e corrediço — bancos em couro premium — 7 lugares',
-    },
-    scores: {
-      performance: 8.5,
-      conforto: 9.5,
-      economia: 9.5,
-      offRoad: 6.5,
-      tecnologia: 9.5,
-      seguranca: 9.5,
     },
   },
 ];

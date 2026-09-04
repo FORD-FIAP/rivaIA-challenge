@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico com memória e aquecimento (motorista e passageiro) — bancos em couro esportivo',
   },
-  scores: {
-    performance: 10.0,
-    conforto: 8.5,
-    economia: 9.5,
-    offRoad: 3.0,
-    tecnologia: 10.0,
-    seguranca: 9.0,
-  },
 };
 
 export const fordMustangMachE: Vehicle[] = [];

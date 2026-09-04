@@ -105,7 +105,7 @@ export function IntroAnimation({ onFinish }: IntroAnimationProps) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: Colors.bg,
     alignItems: 'center',
     justifyContent: 'center',

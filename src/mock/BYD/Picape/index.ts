@@ -59,14 +59,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico (motorista e passageiro) — bancos em couro',
   },
-  scores: {
-    performance: 9.5,
-    conforto: 8.5,
-    economia: 9.0,
-    offRoad: 9.0,
-    tecnologia: 9.5,
-    seguranca: 9.0,
-  },
 };
 
 export const bydPicapes: Vehicle[] = [];

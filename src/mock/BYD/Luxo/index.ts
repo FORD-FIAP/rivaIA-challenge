@@ -55,14 +55,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM - Duas zonas + V2L tomada residencial 3,3 kW',
     ajuste_banco: 'Elétrico com memória, aquecimento, ventilação e massagem (todas as fileiras) — couro Nappa premium + duas geladeiras integradas',
   },
-  scores: {
-    performance: 10.0,
-    conforto: 10.0,
-    economia: 9.0,
-    offRoad: 2.0,
-    tecnologia: 10.0,
-    seguranca: 10.0,
-  },
 };
 
 export const denzaVersoes: Vehicle[] = [
@@ -120,14 +112,6 @@ export const denzaVersoes: Vehicle[] = [
       carregador_wireless: 'SIM - Dupla zona + V2L 3,3 kW',
       ajuste_banco: 'Elétrico com memória, aquecimento, ventilação e massagem (motorista e passageiro) — couro Nappa',
     },
-    scores: {
-      performance: 9.5,
-      conforto: 10.0,
-      economia: 9.0,
-      offRoad: 6.0,
-      tecnologia: 10.0,
-      seguranca: 10.0,
-    },
   },
   {
     id: '3',
@@ -182,14 +166,6 @@ export const denzaVersoes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Sensores dianteiros e traseiros + portas laterais deslizantes motorizadas + acesso inteligente UWB',
       carregador_wireless: 'SIM - Duplo + V2L 3,3 kW',
       ajuste_banco: 'Elétrico com memória, aquecimento, ventilação e massagem (motorista, passageiro e segunda fileira) — segunda fileira reclinável 135° tipo Business Class — 7 lugares — garantia 7 anos',
-    },
-    scores: {
-      performance: 8.0,
-      conforto: 10.0,
-      economia: 9.0,
-      offRoad: 2.5,
-      tecnologia: 10.0,
-      seguranca: 9.5,
     },
   },
 ];

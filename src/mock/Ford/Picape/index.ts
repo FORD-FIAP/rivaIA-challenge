@@ -59,14 +59,6 @@ export const featuredVehicle: Vehicle = {
     carregador_wireless: 'SIM',
     ajuste_banco: 'Elétrico',
   },
-  scores: {
-    performance: 9.4,
-    conforto: 8.4,
-    economia: 5.5,
-    offRoad: 9.8,
-    tecnologia: 9.5,
-    seguranca: 9.0,
-  },
 };
 
 export const fordPicapes: Vehicle[] = [
@@ -128,14 +120,6 @@ export const fordPicapes: Vehicle[] = [
       carregador_wireless: 'NÃO',
       ajuste_banco: 'Elétrico',
     },
-    scores: {
-      performance: 6.5,
-      conforto: 8.5,
-      economia: 9.5,
-      offRoad: 5.0,
-      tecnologia: 8.0,
-      seguranca: 8.5,
-    },
   },
   {
     id: '3',
@@ -194,14 +178,6 @@ export const fordPicapes: Vehicle[] = [
       sensor_estacionamento: 'Sensores dianteiro e traseiro de série',
       carregador_wireless: 'Carregador sem fio de série',
       ajuste_banco: 'Elétrico 8 posições (motorista) / Manual 6 posições (passageiro)',
-    },
-    scores: {
-      performance: 8.0,
-      conforto: 8.5,
-      economia: 7.5,
-      offRoad: 6.5,
-      tecnologia: 9.0,
-      seguranca: 9.0,
     },
   },
   {
@@ -262,14 +238,6 @@ export const fordPicapes: Vehicle[] = [
       carregador_wireless: 'SIM - Carregador sem fio de série',
       ajuste_banco: 'Elétrico 8 posições (motorista) / Manual 6 posições (passageiro) — banco dianteiro aquecido',
     },
-    scores: {
-      performance: 8.0,
-      conforto: 8.0,
-      economia: 7.0,
-      offRoad: 9.0,
-      tecnologia: 9.0,
-      seguranca: 9.0,
-    },
   },
   {
     id: '5',
@@ -329,14 +297,6 @@ export const fordPicapes: Vehicle[] = [
       carregador_wireless: 'SIM - Carregador sem fio de série',
       ajuste_banco: 'Elétrico com memória de posição (motorista e passageiro) + pedais com ajuste elétrico',
     },
-    scores: {
-      performance: 9.5,
-      conforto: 9.0,
-      economia: 4.5,
-      offRoad: 8.5,
-      tecnologia: 9.5,
-      seguranca: 9.5,
-    },
   },
   {
     id: '6',
@@ -395,14 +355,6 @@ export const fordPicapes: Vehicle[] = [
       sensor_estacionamento: 'SIM - Câmera traseira com detecção de objetos + sensores',
       carregador_wireless: 'SIM - Carregador sem fio de série',
       ajuste_banco: 'Elétrico com memória de posição (motorista e passageiro) + pedais com ajuste elétrico',
-    },
-    scores: {
-      performance: 9.5,
-      conforto: 8.5,
-      economia: 4.0,
-      offRoad: 9.8,
-      tecnologia: 9.5,
-      seguranca: 9.5,
     },
   },
 ];

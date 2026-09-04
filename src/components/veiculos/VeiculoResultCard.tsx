@@ -1,44 +1,43 @@
-/** Card compacto usado na listagem de resultados da tela de Veículos */
+/** Card usado na listagem de resultados da tela de Veículos — foto full-width + stats rápidos */
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
+
 interface VeiculoResultCardProps {
   vehicle: Vehicle;
   onPress: () => void;
 }
 
 export function VeiculoResultCard({ vehicle, onPress }: VeiculoResultCardProps) {
-  const motor = vehicle.motorizacao_desempenho;
+  const imagem = vehicle.imagens?.[0];
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.85}>
-      {/* Área da imagem */}
+      {/* Foto full-width com nome sobreposto */}
       <View style={styles.imageArea}>
-        <MaterialCommunityIcons name="truck" size={56} color={Colors.action} />
+        {imagem ? (
+          <Image source={imagem} style={styles.image} resizeMode="cover" />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <MaterialCommunityIcons name="car-side" size={48} color={Colors.action} />
+          </View>
+        )}
+        <LinearGradient
+          colors={Colors.gradientPhotoFade as [string, string]}
+          style={styles.imageFade}
+        />
+        <View style={styles.imageTextOverlay}>
+          <Text style={styles.brandYear}>{vehicle.marca.charAt(0) + vehicle.marca.slice(1).toLowerCase()} · {vehicle.ano}</Text>
+          <Text style={styles.name}>{vehicle.versao}</Text>
+        </View>
       </View>
 
-      {/* Informações */}
-      <View style={styles.info}>
-        <Text style={styles.brandYear}>{vehicle.marca} · {vehicle.ano}</Text>
-
-        <Text style={styles.name}>{vehicle.versao}</Text>
-        <Text style={styles.engine}>{motor?.motor}</Text>
-
-        <View style={styles.row}>
-          <Text style={styles.price}>{vehicle.preco}</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Feather name="zap" size={10} color={Colors.textMuted} />
-              <Text style={styles.statText}>{motor?.potencia} cv</Text>
-            </View>
-            <View style={styles.stat}>
-              <MaterialCommunityIcons name="water-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.statText}>{motor?.combustivel}</Text>
-            </View>
-          </View>
-        </View>
+      <View style={styles.seeMoreRow}>
+        <Text style={styles.seeMoreLabel}>Veja mais</Text>
+        <Feather name="chevron-right" size={14} color={Colors.accent} />
       </View>
     </TouchableOpacity>
   );
@@ -46,69 +45,63 @@ export function VeiculoResultCard({ vehicle, onPress }: VeiculoResultCardProps) 
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    backgroundColor: Colors.hover,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     borderRadius: Colors.radiusLg,
     overflow: 'hidden',
   },
   imageArea: {
-    width: 100,
+    height: 160,
     backgroundColor: Colors.surface,
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: Colors.border,
-    paddingVertical: 12,
   },
-  info: {
-    flex: 1,
-    padding: 12,
-    gap: 2,
-    justifyContent: 'center',
+  imageFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+  },
+  imageTextOverlay: {
+    position: 'absolute',
+    left: 14,
+    bottom: 12,
+    right: 14,
   },
   brandYear: {
-    color: Colors.accent,
-    fontSize: 10,
-    letterSpacing: 0.3,
+    color: Colors.textSecondary,
+    fontSize: 12,
     fontFamily: 'Sora_400Regular',
   },
   name: {
-    color: Colors.textPrimary,
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
-  engine: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-    marginBottom: 6,
-  },
-  row: {
+  seeMoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 2,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  price: {
-    color: Colors.textPrimary,
+  seeMoreLabel: {
+    color: Colors.accent,
     fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  statText: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontFamily: 'Sora_400Regular',
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
   },
 });

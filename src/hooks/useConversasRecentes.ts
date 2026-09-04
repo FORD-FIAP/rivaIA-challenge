@@ -1,14 +1,18 @@
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScriptedMessage } from '../mock/rivaChat';
 
 const STORAGE_KEY = '@riva/conversas_recentes';
 const MAX_ITEMS = 10;
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'riva';
+  text: string;
+}
+
 export type ConversaArquivada = {
   titulo: string;
-  messages: ScriptedMessage[];
-  cursor: number;
+  messages: ChatMessage[];
   favorited: boolean;
 };
 

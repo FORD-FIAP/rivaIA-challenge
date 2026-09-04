@@ -17,49 +17,12 @@ import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { vehicles, featuredVehicle } from '../mock/veiculos';
-import { Vehicle, VehicleScores } from '../types/vehicle';
-import { RadarChart } from '../components/comparar/RadarChart';
+import { Vehicle } from '../types/vehicle';
 
 const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
 const COLOR_A = Colors.accent;       // ciano
 const COLOR_B = '#7B6FE8';           // roxo suave
-
-const SCORE_KEYS: (keyof VehicleScores)[] = [
-  'performance',
-  'conforto',
-  'economia',
-  'offRoad',
-  'tecnologia',
-  'seguranca',
-];
-
-const SCORE_LABELS: Record<keyof VehicleScores, string> = {
-  performance: 'Performance',
-  conforto: 'Conforto',
-  economia: 'Economia',
-  offRoad: 'Off-road',
-  tecnologia: 'Tecnologia',
-  seguranca: 'Segurança',
-};
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function getScoreValues(v: Vehicle): number[] {
-  const s = v.scores;
-  return SCORE_KEYS.map((k) => (s ? (s[k] as number | undefined) ?? 0 : 0));
-}
-
-function totalScore(v: Vehicle) {
-  return getScoreValues(v).reduce((a, b) => a + b, 0);
-}
-
-function topEntries(v: Vehicle, n: number, highest: boolean) {
-  const s = v.scores;
-  return SCORE_KEYS.map((k) => ({ key: k, value: s ? (s[k] as number | undefined) ?? 0 : 0 }))
-    .sort((a, b) => (highest ? b.value - a.value : a.value - b.value))
-    .slice(0, n);
-}
 
 // ─── Tela principal ──────────────────────────────────────────────────────────
 
@@ -67,7 +30,6 @@ export function CompararScreen() {
   const { openSidebar, pendingComparisonIds, clearPendingComparison } = useNavigation();
   const { isComparisonFavorite, toggleComparison } = useFavoritesContext();
   const { isAuthenticated, requestLogin } = useAuth();
-  const { width } = useWindowDimensions();
   const [slots, setSlots] = useState<[Vehicle | null, Vehicle | null]>([null, null]);
   const [pickingSlot, setPickingSlot] = useState<0 | 1 | null>(null);
   const [motorOpen, setMotorOpen] = useState(true);
@@ -125,14 +87,8 @@ export function CompararScreen() {
     toggleComparison(vA.id, vB.id);
   }
 
-  const winner = bothSelected
-    ? totalScore(vA) >= totalScore(vB)
-      ? vA
-      : vB
-    : null;
-
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -188,88 +144,6 @@ export function CompararScreen() {
         {/* ── Seções de comparação (só quando ambos selecionados) ── */}
         {bothSelected && (
           <>
-            {/* Radar */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="trophy-outline" size={16} color={Colors.accent} />
-                <Text style={styles.sectionTitle}>Pontuação por categoria</Text>
-              </View>
-              <View style={styles.radarWrapper}>
-                <RadarChart
-                  valuesA={getScoreValues(vA)}
-                  valuesB={getScoreValues(vB)}
-                  colorA={COLOR_A}
-                  colorB={COLOR_B}
-                  labelA={vA.versao}
-                  labelB={vB.versao}
-                  size={Math.min(width - 80, 320)}
-                />
-              </View>
-            </View>
-
-            {/* Recomendação RIVA */}
-            <View style={styles.recoCard}>
-              <View style={styles.recoOrb} />
-              <View style={styles.recoBody}>
-                <Text style={styles.recoLabel}>RECOMENDAÇÃO RIVA</Text>
-                <Text style={styles.recoText}>
-                  O melhor encaixe é o{' '}
-                  <Text style={styles.recoHighlight}>{winner!.versao}</Text>.
-                </Text>
-                <Text style={styles.recoSub}>
-                  {winner === vA
-                    ? `${vB.versao} é a alternativa se priorizar off-road.`
-                    : `${vA.versao} é a alternativa se priorizar esportivo.`}
-                </Text>
-              </View>
-            </View>
-
-            {/* Pontos fortes & fracos */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="lightning-bolt" size={16} color={Colors.accent} />
-                <Text style={styles.sectionTitle}>Pontos fortes & fracos</Text>
-              </View>
-              <View style={styles.strengthsRow}>
-                {([vA, vB] as Vehicle[]).map((v, vi) => (
-                  <View key={v.id} style={styles.strengthsCard}>
-                    <Text style={[styles.strengthsBrand, { color: vi === 0 ? COLOR_A : COLOR_B }]}>
-                      {v.marca}
-                    </Text>
-                    <Text style={styles.strengthsName} numberOfLines={2}>{v.versao}</Text>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.pointsGroup}>
-                      <View style={styles.pointsLabelRow}>
-                        <MaterialCommunityIcons name="thumb-up-outline" size={11} color="#4ADE80" />
-                        <Text style={[styles.pointsGroupLabel, { color: '#4ADE80' }]}>PONTOS FORTES</Text>
-                      </View>
-                      {topEntries(v, 2, true).map(({ key, value }) => (
-                        <View key={key} style={styles.pointRow}>
-                          <Text style={styles.pointName}>{SCORE_LABELS[key]}</Text>
-                          <Text style={[styles.pointValue, { color: '#4ADE80' }]}>{value.toFixed(1)}</Text>
-                        </View>
-                      ))}
-                    </View>
-
-                    <View style={styles.pointsGroup}>
-                      <View style={styles.pointsLabelRow}>
-                        <MaterialCommunityIcons name="thumb-down-outline" size={11} color="#F97316" />
-                        <Text style={[styles.pointsGroupLabel, { color: '#F97316' }]}>PONTOS FRACOS</Text>
-                      </View>
-                      {topEntries(v, 2, false).map(({ key, value }) => (
-                        <View key={key} style={styles.pointRow}>
-                          <Text style={styles.pointName}>{SCORE_LABELS[key]}</Text>
-                          <Text style={[styles.pointValue, { color: '#F97316' }]}>{value.toFixed(1)}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-
             {/* Motor & Desempenho */}
             <View style={styles.section}>
               <TouchableOpacity
@@ -455,7 +329,7 @@ function FilledSlot({
     <View style={styles.slotFilled}>
       <View style={styles.imageArea}>
         <Text style={[styles.brandBadge, { color }]}>{vehicle.marca.toUpperCase()}</Text>
-        <MaterialCommunityIcons name="truck" size={56} color={color} />
+        <MaterialCommunityIcons name="car-side" size={56} color={color} />
       </View>
 
       <View style={styles.filledInfo}>
@@ -736,7 +610,7 @@ function VehiclePickerModal({
             >
               <View style={styles.listThumb}>
                 <Text style={styles.listThumbLabel}>{item.marca.slice(0, 5).toUpperCase()}</Text>
-                <MaterialCommunityIcons name="truck" size={28} color={Colors.action} />
+                <MaterialCommunityIcons name="car-side" size={28} color={Colors.action} />
               </View>
               <View style={styles.listText}>
                 <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
@@ -951,116 +825,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
-  radarWrapper: {
-    alignItems: 'center',
-  },
-
-  // Recomendação
-  recoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: Colors.radiusLg,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    padding: 14,
-  },
-  recoOrb: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.action,
-    shadowColor: Colors.action,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
-    flexShrink: 0,
-  },
-  recoBody: { flex: 1, gap: 4 },
-  recoLabel: {
-    color: Colors.accent,
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  recoText: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    lineHeight: 20,
-  },
-  recoHighlight: {
-    color: Colors.accent,
-  },
-  recoSub: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontFamily: 'Sora_400Regular',
-    lineHeight: 16,
-  },
-
-  // Pontos fortes & fracos
-  strengthsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  strengthsCard: {
-    flex: 1,
-    gap: 6,
-  },
-  strengthsBrand: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  strengthsName: {
-    color: Colors.textPrimary,
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    lineHeight: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-  },
-  pointsGroup: { gap: 6 },
-  pointsLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  pointsGroupLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.8,
-  },
-  pointRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pointName: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-  },
-  pointValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-
   // Tabela
   table: { gap: 0 },
   tableRow: {
@@ -1116,7 +880,7 @@ const styles = StyleSheet.create({
 
   // Modal
   modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   modalSheet: {
