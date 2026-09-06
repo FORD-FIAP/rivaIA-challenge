@@ -161,7 +161,6 @@ export function ProfileScreen() {
             return (
               <View key={item.key} style={styles.disabledWrapper}>
                 <Pressable
-                  // @ts-expect-error Pressable.onHoverIn/Out existem em RN-web
                   onHoverIn={() => setHovered(item.key)}
                   onHoverOut={() => setHovered((h) => (h === item.key ? null : h))}
                   // No nativo (sem hover), o toque também revela a mensagem.

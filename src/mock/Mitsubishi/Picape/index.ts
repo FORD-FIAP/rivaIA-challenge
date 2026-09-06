@@ -13,7 +13,6 @@ export const featuredVehicle: Vehicle = {
   imagens: [
     require('../../../../assets/triton-katana/image.png'),
     require('../../../../assets/triton-katana/image2.png'),
-    require('../../../../assets/triton-katana/image3.png'),
     require('../../../../assets/triton-katana/image4.png'),
   ],
   motorizacao_desempenho: {

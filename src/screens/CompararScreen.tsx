@@ -1,8 +1,9 @@
-/** Tela de comparação de veículos */
+/** Tela de comparação de veículos — até 4 modelos lado a lado */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   FlatList,
@@ -12,38 +13,110 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Polygon, Line, Text as SvgText } from 'react-native-svg';
 import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { vehicles, featuredVehicle } from '../mock/veiculos';
 import { Vehicle } from '../types/vehicle';
+import { FilterSheetHeader, FilterClearLabel, FilterChipRow, FilterChip } from '../components/shared/FilterChips';
 
 const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
-const COLOR_A = Colors.accent;       // ciano
-const COLOR_B = '#7B6FE8';           // roxo suave
+const MAX_SLOTS = 4;
+const SLOT_COLORS = [Colors.accent, '#7B6FE8', '#FF9F45', '#F472B6'];
+const BETTER_COLOR = '#3DDC84';
+const WORSE_COLOR = '#FF6B6B';
+
+type CellState = 'best' | 'worst' | 'neutral';
+
+interface AttrSpec {
+  label: string;
+  unit?: string;
+  get: (v: Vehicle) => string | number | undefined;
+  /** Quando true, o valor é numérico (ou tem número extraível) e pode ser comparado. */
+  numeric?: boolean;
+  /** Quando definido, valores que batem com o regex viram "1" (positivo) e o resto "0". */
+  positiveRegex?: RegExp;
+  higherIsBetter?: boolean;
+}
+
+function parseLeadingNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') return isNaN(value) ? undefined : value;
+  if (typeof value !== 'string') return undefined;
+  const match = value.replace(',', '.').match(/-?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : undefined;
+}
+
+/** Calcula, pra uma lista de veículos, o valor formatado + estado (melhor/pior/neutro) de cada um numa linha. */
+function resolveRow(vehiclesInView: Vehicle[], spec: AttrSpec): { text: string; state: CellState }[] {
+  const raw = vehiclesInView.map((v) => spec.get(v));
+
+  if (!spec.numeric && !spec.positiveRegex) {
+    return raw.map((r) => ({ text: r !== undefined && r !== null && r !== '' ? String(r) : '—', state: 'neutral' }));
+  }
+
+  const higherIsBetter = spec.higherIsBetter !== false;
+  const scores = raw.map((r) => {
+    if (spec.positiveRegex) {
+      if (r === undefined) return undefined;
+      return spec.positiveRegex.test(String(r)) ? 1 : 0;
+    }
+    return parseLeadingNumber(r);
+  });
+
+  const defined = scores.filter((s): s is number => s !== undefined);
+  const distinct = new Set(defined);
+  const canHighlight = distinct.size > 1;
+  const best = canHighlight ? (higherIsBetter ? Math.max(...defined) : Math.min(...defined)) : undefined;
+  const worst = canHighlight ? (higherIsBetter ? Math.min(...defined) : Math.max(...defined)) : undefined;
+
+  return raw.map((r, i) => {
+    const score = scores[i];
+    let state: CellState = 'neutral';
+    if (canHighlight && score !== undefined) {
+      if (score === best && score !== worst) state = 'best';
+      else if (score === worst && score !== best) state = 'worst';
+    }
+    const text =
+      r === undefined || r === null || r === ''
+        ? '—'
+        : spec.positiveRegex
+        ? String(r)
+        : `${r}${spec.unit ? ` ${spec.unit}` : ''}`;
+    return { text, state };
+  });
+}
 
 // ─── Tela principal ──────────────────────────────────────────────────────────
 
 export function CompararScreen() {
-  const { openSidebar, pendingComparisonIds, clearPendingComparison } = useNavigation();
+  const {
+    openSidebar,
+    pendingComparisonIds,
+    clearPendingComparison,
+    pendingCompareVehicleId,
+    clearPendingCompareVehicle,
+  } = useNavigation();
   const { isComparisonFavorite, toggleComparison } = useFavoritesContext();
   const { isAuthenticated, requestLogin } = useAuth();
-  const [slots, setSlots] = useState<[Vehicle | null, Vehicle | null]>([null, null]);
-  const [pickingSlot, setPickingSlot] = useState<0 | 1 | null>(null);
+  const [slots, setSlots] = useState<(Vehicle | null)[]>([null, null]);
+  const [pickingSlot, setPickingSlot] = useState<number | null>(null);
   const [motorOpen, setMotorOpen] = useState(true);
   const [carroceriaOpen, setCarroceriaOpen] = useState(true);
   const [offRoadOpen, setOffRoadOpen] = useState(true);
+  const [segurancaOpen, setSegurancaOpen] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
-  const bothSelected = slots[0] !== null && slots[1] !== null;
+  const filledVehicles = slots.filter((v): v is Vehicle => v !== null);
+  const comparisonReady = filledVehicles.length >= 2;
 
   useEffect(() => {
-    if (bothSelected) {
-      setTimeout(() => scrollRef.current?.scrollTo({ y: 260, animated: true }), 100);
+    if (comparisonReady) {
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 280, animated: true }), 100);
     }
-  }, [bothSelected]);
+  }, [comparisonReady]);
 
   useEffect(() => {
     if (pendingComparisonIds) {
@@ -55,7 +128,18 @@ export function CompararScreen() {
     }
   }, [pendingComparisonIds]);
 
-  function openPicker(index: 0 | 1) {
+  useEffect(() => {
+    if (pendingCompareVehicleId) {
+      const vehicle = ALL_VEHICLES.find((v) => v.id === pendingCompareVehicleId) ?? null;
+      if (vehicle) {
+        setSlots([vehicle, null]);
+        setPickingSlot(1);
+      }
+      clearPendingCompareVehicle();
+    }
+  }, [pendingCompareVehicleId]);
+
+  function openPicker(index: number) {
     setPickingSlot(index);
   }
 
@@ -63,28 +147,42 @@ export function CompararScreen() {
     if (pickingSlot === null) return;
     const slotIndex = pickingSlot;
     setSlots((prev) => {
-      const next: [Vehicle | null, Vehicle | null] = [...prev] as [Vehicle | null, Vehicle | null];
+      const next = [...prev];
       next[slotIndex] = vehicle;
       return next;
     });
     setPickingSlot(null);
   }
 
-  function removeVehicle(index: 0 | 1) {
+  function removeVehicle(index: number) {
     setSlots((prev) => {
-      const next: [Vehicle | null, Vehicle | null] = [...prev] as [Vehicle | null, Vehicle | null];
+      const next = [...prev];
+      // Slots extras (3º/4º) vazios somem; os 2 primeiros só ficam vazios.
+      if (index >= 2 && next[index] !== null) {
+        next[index] = null;
+        return next;
+      }
       next[index] = null;
       return next;
     });
   }
 
-  const vA = slots[0]!;
-  const vB = slots[1]!;
-  const comparisonSaved = bothSelected && isAuthenticated && isComparisonFavorite(vA.id, vB.id);
+  function addSlot() {
+    setSlots((prev) => (prev.length < MAX_SLOTS ? [...prev, null] : prev));
+  }
+
+  function removeEmptySlot(index: number) {
+    setSlots((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // O "salvar comparação" (estrela) só existe pra pares — a API de favoritos é 1x1.
+  const canSaveComparison = filledVehicles.length === 2;
+  const comparisonSaved =
+    canSaveComparison && isAuthenticated && isComparisonFavorite(filledVehicles[0].id, filledVehicles[1].id);
 
   function toggleSavedComparison() {
-    if (!bothSelected) return;
-    toggleComparison(vA.id, vB.id);
+    if (!canSaveComparison) return;
+    toggleComparison(filledVehicles[0].id, filledVehicles[1].id);
   }
 
   return (
@@ -93,10 +191,10 @@ export function CompararScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Comparar</Text>
-          <Text style={styles.headerSubtitle}>Escolha até 2 modelos</Text>
+          <Text style={styles.headerSubtitle}>Escolha até {MAX_SLOTS} modelos</Text>
         </View>
         <View style={styles.headerActions}>
-          {bothSelected && (
+          {canSaveComparison && (
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => {
@@ -104,8 +202,8 @@ export function CompararScreen() {
                   toggleSavedComparison();
                 } else {
                   requestLogin(
-                    { type: 'comparison', vehicleA: vA, vehicleB: vB },
-                    () => toggleComparison(vA.id, vB.id),
+                    { type: 'comparison', vehicleA: filledVehicles[0], vehicleB: filledVehicles[1] },
+                    () => toggleComparison(filledVehicles[0].id, filledVehicles[1].id),
                   );
                 }
               }}
@@ -124,164 +222,102 @@ export function CompararScreen() {
       </View>
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Slots */}
-        <View style={styles.slots}>
-          {([0, 1] as const).map((i) =>
-            slots[i] ? (
+        {/* Slots — rolagem horizontal pra caber até 4 */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.slots}
+        >
+          {slots.map((vehicle, i) =>
+            vehicle ? (
               <FilledSlot
                 key={i}
-                vehicle={slots[i]!}
-                color={i === 0 ? COLOR_A : COLOR_B}
+                vehicle={vehicle}
+                color={SLOT_COLORS[i % SLOT_COLORS.length]}
                 onSwap={() => openPicker(i)}
                 onRemove={() => removeVehicle(i)}
               />
             ) : (
-              <EmptySlot key={i} onPress={() => openPicker(i)} />
+              <EmptySlot
+                key={i}
+                onPress={() => openPicker(i)}
+                onRemove={i >= 2 ? () => removeEmptySlot(i) : undefined}
+              />
             ),
           )}
-        </View>
+          {slots.length < MAX_SLOTS && (
+            <TouchableOpacity style={styles.addSlot} activeOpacity={0.7} onPress={addSlot}>
+              <Feather name="plus-circle" size={22} color={Colors.textMuted} />
+              <Text style={styles.addSlotLabel}>Adicionar</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
 
-        {/* ── Seções de comparação (só quando ambos selecionados) ── */}
-        {bothSelected && (
+        {/* ── Seções de comparação (a partir de 2 selecionados) ── */}
+        {comparisonReady && (
           <>
-            {/* Motor & Desempenho */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setMotorOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="engine-outline" size={16} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Motor & Desempenho</Text>
-                <Feather
-                  name={motorOpen ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={Colors.textMuted}
-                />
-              </TouchableOpacity>
+            <RadarSection vehicles={filledVehicles} colors={SLOT_COLORS} />
 
-              {motorOpen && (
-                <View style={styles.table}>
-                  {/* Cabeçalho */}
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>
-                      ATRIBUTO
-                    </Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>
-                      {vA.marca}
-                    </Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>
-                      {vB.marca}
-                    </Text>
-                  </View>
+            <ComparisonSection
+              icon={<MaterialCommunityIcons name="engine-outline" size={16} color={Colors.accent} />}
+              title="Motor & Desempenho"
+              vehicles={filledVehicles}
+              colors={SLOT_COLORS}
+              open={motorOpen}
+              onToggle={() => setMotorOpen((o) => !o)}
+              attrs={[
+                { label: 'Potência', get: (v) => v.motorizacao_desempenho?.potencia, numeric: true, unit: 'cv' },
+                { label: 'Torque', get: (v) => v.motorizacao_desempenho?.torque, numeric: true, unit: 'Nm' },
+                { label: 'Combustível', get: (v) => v.motorizacao_desempenho?.combustivel },
+                { label: '0-100 km/h', get: (v) => v.motorizacao_desempenho?.aceleracao, numeric: true, higherIsBetter: false },
+              ]}
+            />
 
-                  {/* Versão */}
-                  <TableRow
-                    label=""
-                    valA={vA.versao}
-                    valB={vB.versao}
-                    colorA={COLOR_A}
-                    colorB={COLOR_B}
-                    highlight={false}
-                  />
+            <ComparisonSection
+              icon={<Feather name="edit-2" size={15} color={Colors.accent} />}
+              title="Carroceria & Dimensões"
+              vehicles={filledVehicles}
+              colors={SLOT_COLORS}
+              open={carroceriaOpen}
+              onToggle={() => setCarroceriaOpen((o) => !o)}
+              attrs={[
+                { label: 'Comprimento', get: (v) => v.dimensoes?.comprimento, numeric: true, unit: 'mm' },
+                { label: 'Largura', get: (v) => v.dimensoes?.largura, numeric: true, unit: 'mm' },
+                { label: 'Altura', get: (v) => v.dimensoes?.altura, numeric: true, unit: 'mm' },
+                { label: 'Cap. Carga', get: (v) => v.capacidade?.capacidade_reboque, numeric: true },
+              ]}
+            />
 
-                  {/* Linhas numéricas com destaque */}
-                  <TableRowNum label="Motor" strA={vA.motorizacao_desempenho?.motor} strB={vB.motorizacao_desempenho?.motor} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Potência" strA={`${vA.motorizacao_desempenho?.potencia} cv`} strB={`${vB.motorizacao_desempenho?.potencia} cv`} numA={Number(vA.motorizacao_desempenho?.potencia)} numB={Number(vB.motorizacao_desempenho?.potencia)} colorA={COLOR_A} colorB={COLOR_B} higherIsBetter />
-                  <TableRowNum label="Torque" strA={`${vA.motorizacao_desempenho?.torque} Nm`} strB={`${vB.motorizacao_desempenho?.torque} Nm`} numA={Number(vA.motorizacao_desempenho?.torque)} numB={Number(vB.motorizacao_desempenho?.torque)} colorA={COLOR_A} colorB={COLOR_B} higherIsBetter />
-                  <TableRowNum label="Combustível" strA={vA.motorizacao_desempenho?.combustivel} strB={vB.motorizacao_desempenho?.combustivel} colorA={COLOR_A} colorB={COLOR_B} />
-                </View>
-              )}
-            </View>
+            <ComparisonSection
+              icon={<MaterialCommunityIcons name="terrain" size={16} color={Colors.accent} />}
+              title="Off-Road & Tração"
+              vehicles={filledVehicles}
+              colors={SLOT_COLORS}
+              open={offRoadOpen}
+              onToggle={() => setOffRoadOpen((o) => !o)}
+              attrs={[
+                { label: 'Ângulo de ataque', get: (v) => v.off_road?.angulo_ataque, numeric: true, unit: '°' },
+                { label: 'Ângulo de saída', get: (v) => v.off_road?.angulo_saida, numeric: true, unit: '°' },
+                { label: 'Prof. na água', get: (v) => v.off_road?.profundidade_agua, numeric: true, unit: 'mm' },
+                { label: 'Diferencial bloqueável', get: (v) => v.off_road?.diferencial_traseiro_bloqueavel, positiveRegex: /sim/i },
+                { label: 'Controle de descida', get: (v) => v.off_road?.controle_descida, positiveRegex: /sim/i },
+              ]}
+            />
 
-            {/* Carroceria & Dimensões */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setCarroceriaOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <Feather name="edit-2" size={15} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Carroceria & Dimensões</Text>
-                <Feather name={carroceriaOpen ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              {carroceriaOpen && (
-                <View style={styles.table}>
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>ATRIBUTO</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>{vA.marca}</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>{vB.marca}</Text>
-                  </View>
-                  <TableRow label="" valA={vA.versao} valB={vB.versao} colorA={COLOR_A} colorB={COLOR_B} highlight={false} />
-                  <TableRowNum label="Carroceria" strA={vA.classificacao} strB={vB.classificacao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum
-                    label="Comprimento"
-                    strA={vA.dimensoes ? `${vA.dimensoes.comprimento} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.comprimento} mm` : undefined}
-                    numA={vA.dimensoes?.comprimento}
-                    numB={vB.dimensoes?.comprimento}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Largura"
-                    strA={vA.dimensoes ? `${vA.dimensoes.largura} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.largura} mm` : undefined}
-                    numA={vA.dimensoes?.largura}
-                    numB={vB.dimensoes?.largura}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Altura"
-                    strA={vA.dimensoes ? `${vA.dimensoes.altura} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.altura} mm` : undefined}
-                    numA={vA.dimensoes?.altura}
-                    numB={vB.dimensoes?.altura}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Cap. Carga"
-                    strA={vA.capacidade?.capacidade_reboque}
-                    strB={vB.capacidade?.capacidade_reboque}
-                    colorA={COLOR_A} colorB={COLOR_B}
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Off-Road & Tração */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setOffRoadOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="terrain" size={16} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Off-Road & Tração</Text>
-                <Feather name={offRoadOpen ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              {offRoadOpen && (
-                <View style={styles.table}>
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>ATRIBUTO</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>{vA.marca}</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>{vB.marca}</Text>
-                  </View>
-                  <TableRow label="" valA={vA.versao} valB={vB.versao} colorA={COLOR_A} colorB={COLOR_B} highlight={false} />
-                  <TableRowNum label="Amortecedor" strA={vA.off_road?.suspensao} strB={vB.off_road?.suspensao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Sistema AWD" strA={vA.off_road?.modos_tracao} strB={vB.off_road?.modos_tracao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Dif. Traseiro" strA={vA.off_road?.diferencial_traseiro_bloqueavel} strB={vB.off_road?.diferencial_traseiro_bloqueavel} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum
-                    label="Alt. Mín. Solo"
-                    strA={vA.dimensoes?.vao_livre}
-                    strB={vB.dimensoes?.vao_livre}
-                    colorA={COLOR_A} colorB={COLOR_B}
-                  />
-                  <TableRowNum label="Controle Descida" strA={vA.off_road?.controle_descida} strB={vB.off_road?.controle_descida} colorA={COLOR_A} colorB={COLOR_B} />
-                </View>
-              )}
-            </View>
+            <ComparisonSection
+              icon={<MaterialCommunityIcons name="shield-check-outline" size={16} color={Colors.accent} />}
+              title="Segurança"
+              vehicles={filledVehicles}
+              colors={SLOT_COLORS}
+              open={segurancaOpen}
+              onToggle={() => setSegurancaOpen((o) => !o)}
+              attrs={[
+                { label: 'Airbags', get: (v) => v.tecnologia_seguranca?.airbags, numeric: true },
+                { label: 'Frenagem autônoma', get: (v) => v.tecnologia_seguranca?.frenagem_automatica, positiveRegex: /sim|autônoma|aeb/i },
+                { label: 'Alerta ponto cego', get: (v) => v.tecnologia_seguranca?.alerta_ponto_cego, positiveRegex: /sim/i },
+                { label: 'Câmera 360°', get: (v) => v.tecnologia_seguranca?.camera_360, positiveRegex: /sim/i },
+              ]}
+            />
           </>
         )}
 
@@ -290,7 +326,7 @@ export function CompararScreen() {
 
       <VehiclePickerModal
         visible={pickingSlot !== null}
-        excluded={slots.filter(Boolean) as Vehicle[]}
+        excluded={filledVehicles}
         onSelect={selectVehicle}
         onClose={() => setPickingSlot(null)}
       />
@@ -300,13 +336,17 @@ export function CompararScreen() {
 
 // ─── Slot vazio ──────────────────────────────────────────────────────────────
 
-function EmptySlot({ onPress }: { onPress: () => void }) {
+function EmptySlot({ onPress, onRemove }: { onPress: () => void; onRemove?: () => void }) {
   return (
     <TouchableOpacity style={styles.slotEmpty} activeOpacity={0.7} onPress={onPress}>
+      {onRemove && (
+        <TouchableOpacity style={styles.removeEmptySlot} onPress={onRemove} hitSlop={8}>
+          <Feather name="x" size={14} color={Colors.textMuted} />
+        </TouchableOpacity>
+      )}
       <View style={styles.plusCircle}>
         <Feather name="plus" size={22} color={Colors.accent} />
       </View>
-      <Text style={styles.slotTitle}>Comparar Veículo</Text>
       <Text style={styles.slotSubtitle}>Clique para escolher</Text>
     </TouchableOpacity>
   );
@@ -325,19 +365,22 @@ function FilledSlot({
   onSwap: () => void;
   onRemove: () => void;
 }) {
+  const foto = vehicle.imagens?.[0];
+
   return (
     <View style={styles.slotFilled}>
       <View style={styles.imageArea}>
-        <Text style={[styles.brandBadge, { color }]}>{vehicle.marca.toUpperCase()}</Text>
-        <MaterialCommunityIcons name="car-side" size={56} color={color} />
+        {foto ? (
+          <Image source={foto} style={styles.slotImage} resizeMode="cover" />
+        ) : (
+          <MaterialCommunityIcons name="car-side" size={56} color={color} />
+        )}
+        <Text style={[styles.brandBadgeOverlay, { color }]}>{vehicle.marca.toUpperCase()}</Text>
       </View>
 
       <View style={styles.filledInfo}>
         <Text style={[styles.filledBrand, { color }]}>{vehicle.marca.toUpperCase()}</Text>
-        <Text style={styles.filledName} numberOfLines={2}>{vehicle.versao}</Text>
-        <Text style={styles.filledEngine} numberOfLines={1}>
-          {vehicle.motorizacao_desempenho?.motor} · {vehicle.ano}
-        </Text>
+        <Text style={styles.filledName} numberOfLines={2}>{vehicle.modelo}</Text>
         <Text style={[styles.filledPrice, { color }]}>{vehicle.preco}</Text>
 
         <View style={styles.actionRow}>
@@ -357,79 +400,178 @@ function FilledSlot({
   );
 }
 
-// ─── Linhas da tabela ─────────────────────────────────────────────────────────
+// ─── Seção de comparação (linhas valor-label-valor, sem rolagem lateral) ─────
 
-function TableRow({
-  label,
-  valA,
-  valB,
-  colorA,
-  colorB,
-  highlight = false,
+function ComparisonSection({
+  icon,
+  title,
+  vehicles: vehiclesInView,
+  colors,
+  open,
+  onToggle,
+  attrs,
 }: {
-  label: string;
-  valA?: string;
-  valB?: string;
-  colorA: string;
-  colorB: string;
-  highlight?: boolean;
+  icon: React.ReactNode;
+  title: string;
+  vehicles: Vehicle[];
+  colors: string[];
+  open: boolean;
+  onToggle: () => void;
+  attrs: AttrSpec[];
 }) {
   return (
-    <View style={styles.tableRow}>
-      {label ? <Text style={[styles.tableCell, styles.tableCellAttr]}>{label}</Text> : <View style={[styles.tableCell, styles.tableCellAttr]} />}
-      <Text style={[styles.tableCell, { color: highlight ? colorA : Colors.textValue }]}>{valA ?? '—'}</Text>
-      <Text style={[styles.tableCell, { color: highlight ? colorB : Colors.textValue }]}>{valB ?? '—'}</Text>
+    <View style={styles.section}>
+      <TouchableOpacity style={styles.sectionHeader} onPress={onToggle} activeOpacity={0.7}>
+        {icon}
+        <Text style={[styles.sectionTitle, { flex: 1 }]}>{title}</Text>
+        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+      </TouchableOpacity>
+
+      {open && (
+        <View>
+          <View style={[styles.attrRow, styles.attrRowHead]}>
+            {vehiclesInView.map((v, i) => (
+              <View key={v.id} style={styles.attrValueCell}>
+                <Text style={[styles.tableHeadText, { color: colors[i % colors.length] }]} numberOfLines={1}>
+                  {v.marca}
+                </Text>
+              </View>
+            ))}
+            <View style={styles.attrLabelCell}>
+              <Text style={styles.tableHeadText}>ATRIBUTO</Text>
+            </View>
+          </View>
+
+          {attrs.map((spec) => {
+            const cells = resolveRow(vehiclesInView, spec);
+            return (
+              <View key={spec.label} style={styles.attrRow}>
+                {cells.map((c, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.attrValueCell,
+                      c.state === 'best' && styles.cellBest,
+                      c.state === 'worst' && styles.cellWorst,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.attrValueText,
+                        c.state === 'best' && styles.textBest,
+                        c.state === 'worst' && styles.textWorst,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {c.text}
+                    </Text>
+                  </View>
+                ))}
+                <View style={styles.attrLabelCell}>
+                  <Text style={styles.attrLabelText} numberOfLines={2}>{spec.label}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
-function TableRowNum({
-  label,
-  strA,
-  strB,
-  numA,
-  numB,
-  colorA,
-  colorB,
-  higherIsBetter,
-}: {
-  label: string;
-  strA?: string;
-  strB?: string;
-  numA?: number;
-  numB?: number;
-  colorA: string;
-  colorB: string;
-  higherIsBetter?: boolean;
-}) {
-  const canCompare = numA !== undefined && numB !== undefined && !isNaN(numA) && !isNaN(numB);
-  const aWins = canCompare && (higherIsBetter ? numA > numB : numA < numB);
-  const bWins = canCompare && (higherIsBetter ? numB > numA : numB < numA);
+// ─── Radar de atributos (gráfico visual das diferenças) ─────────────────────
+
+const RADAR_AXES: { label: string; get: (v: Vehicle) => number | undefined }[] = [
+  { label: 'Potência', get: (v) => parseLeadingNumber(v.motorizacao_desempenho?.potencia) },
+  { label: 'Torque', get: (v) => parseLeadingNumber(v.motorizacao_desempenho?.torque) },
+  { label: 'Off-road', get: (v) => v.off_road?.angulo_ataque },
+  { label: 'Segurança', get: (v) => v.tecnologia_seguranca?.airbags },
+  { label: 'Reboque', get: (v) => parseLeadingNumber(v.capacidade?.capacidade_reboque) },
+];
+
+function RadarSection({ vehicles: vehiclesInView, colors }: { vehicles: Vehicle[]; colors: string[] }) {
+  const size = 260;
+  const center = size / 2;
+  const radius = size / 2 - 42;
+  const axisCount = RADAR_AXES.length;
+
+  const anglePoint = (index: number, r: number) => {
+    const angle = (Math.PI * 2 * index) / axisCount - Math.PI / 2;
+    return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
+  };
+
+  const maxPerAxis = RADAR_AXES.map((axis) => {
+    const values = vehiclesInView.map((v) => axis.get(v) ?? 0);
+    return Math.max(...values, 1);
+  });
+
+  const polygons = vehiclesInView.map((v, vi) => {
+    const points = RADAR_AXES.map((axis, ai) => {
+      const value = axis.get(v) ?? 0;
+      const normalized = Math.max(0, Math.min(1, value / maxPerAxis[ai]));
+      return anglePoint(ai, normalized * radius);
+    });
+    return { points: points.map((p) => `${p.x},${p.y}`).join(' '), color: colors[vi % colors.length] };
+  });
+
+  const rings = [0.25, 0.5, 0.75, 1];
 
   return (
-    <View style={styles.tableRow}>
-      <Text style={[styles.tableCell, styles.tableCellAttr]}>{label}</Text>
-      <View style={styles.tableCell}>
-        {aWins && (
-          <View style={[styles.betterBadge, { backgroundColor: `${colorA}22` }]}>
-            <MaterialCommunityIcons name="trophy-outline" size={9} color={colorA} />
-            <Text style={[styles.betterLabel, { color: colorA }]}>MELHOR</Text>
-          </View>
-        )}
-        <Text style={{ color: Colors.textValue, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
-          {strA ?? '—'}
-        </Text>
+    <View style={styles.radarSection}>
+      <Text style={styles.radarTitle}>RADAR DE ATRIBUTOS</Text>
+      <View style={styles.radarSvgWrap}>
+        <Svg width={size} height={size}>
+          {rings.map((ring) => (
+            <Polygon
+              key={ring}
+              points={RADAR_AXES.map((_, ai) => {
+                const p = anglePoint(ai, ring * radius);
+                return `${p.x},${p.y}`;
+              }).join(' ')}
+              fill="none"
+              stroke={Colors.border}
+              strokeWidth={1}
+            />
+          ))}
+          {RADAR_AXES.map((axis, ai) => {
+            const p = anglePoint(ai, radius);
+            return <Line key={ai} x1={center} y1={center} x2={p.x} y2={p.y} stroke={Colors.border} strokeWidth={1} />;
+          })}
+          {polygons.map((poly, i) => (
+            <Polygon
+              key={i}
+              points={poly.points}
+              fill={poly.color}
+              fillOpacity={0.18}
+              stroke={poly.color}
+              strokeWidth={2}
+            />
+          ))}
+          {RADAR_AXES.map((axis, ai) => {
+            const p = anglePoint(ai, radius + 18);
+            return (
+              <SvgText
+                key={axis.label}
+                x={p.x}
+                y={p.y}
+                fill={Colors.textSecondary}
+                fontSize={10}
+                fontFamily="Sora_600SemiBold"
+                textAnchor="middle"
+              >
+                {axis.label}
+              </SvgText>
+            );
+          })}
+        </Svg>
       </View>
-      <View style={styles.tableCell}>
-        {bWins && (
-          <View style={[styles.betterBadge, { backgroundColor: `${colorB}22` }]}>
-            <MaterialCommunityIcons name="trophy-outline" size={9} color={colorB} />
-            <Text style={[styles.betterLabel, { color: colorB }]}>MELHOR</Text>
+      <View style={styles.radarLegend}>
+        {vehiclesInView.map((v, i) => (
+          <View key={v.id} style={styles.radarLegendItem}>
+            <View style={[styles.radarLegendDot, { backgroundColor: colors[i % colors.length] }]} />
+            <Text style={styles.radarLegendLabel} numberOfLines={1}>{v.marca} {v.modelo}</Text>
           </View>
-        )}
-        <Text style={{ color: Colors.textValue, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
-          {strB ?? '—'}
-        </Text>
+        ))}
       </View>
     </View>
   );
@@ -457,27 +599,24 @@ function VehiclePickerModal({
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!visible) return;
-    slideAnim.setValue(screenHeight);
-    backdropAnim.setValue(0);
-    setSelectedBrands([]);
-    setSelectedCategories([]);
-    setSelectedModels([]);
+    if (visible) {
+      setSelectedBrands([]);
+      setSelectedCategories([]);
+      setSelectedModels([]);
+    }
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 180,
+        toValue: visible ? 0 : screenHeight,
+        duration: 300,
         useNativeDriver: true,
       }),
       Animated.timing(backdropAnim, {
-        toValue: 1,
-        duration: 180,
+        toValue: visible ? 1 : 0,
+        duration: 300,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [visible, screenHeight]);
-
-  if (!visible) return null;
+  }, [visible]);
 
   const excludedIds = new Set(excluded.map((v) => v.id));
 
@@ -526,64 +665,64 @@ function VehiclePickerModal({
   }
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       <Animated.View style={[styles.modalBackdrop, { opacity: backdropAnim }]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
       </Animated.View>
 
       <Animated.View style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.handle} />
-        <View style={styles.modalTitleRow}>
-          <Text style={styles.modalTitle}>Escolher veículo</Text>
-          {hasAnyFilter && (
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedBrands([]);
-                setSelectedCategories([]);
-                setSelectedModels([]);
-              }}
-            >
-              <Text style={styles.clearFiltersLabel}>Limpar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <FilterSheetHeader
+          title="Escolher veículo"
+          onClose={onClose}
+          rightExtra={
+            hasAnyFilter ? (
+              <FilterClearLabel
+                onPress={() => {
+                  setSelectedBrands([]);
+                  setSelectedCategories([]);
+                  setSelectedModels([]);
+                }}
+              />
+            ) : undefined
+          }
+        />
 
         <View style={styles.filtersBlock}>
-          <PickerFilterRow label="MARCA">
+          <FilterChipRow label="Marca">
             {allBrands.map((brand) => (
-              <PickerChip
+              <FilterChip
                 key={brand}
                 label={brand.charAt(0) + brand.slice(1).toLowerCase()}
                 active={selectedBrands.includes(brand)}
                 onPress={() => toggleBrand(brand)}
               />
             ))}
-          </PickerFilterRow>
+          </FilterChipRow>
 
           {selectedBrands.length > 0 && availableCategories.length > 0 && (
-            <PickerFilterRow label="CATEGORIA">
+            <FilterChipRow label="Categoria">
               {availableCategories.map((cat) => (
-                <PickerChip
+                <FilterChip
                   key={cat}
                   label={cat}
                   active={selectedCategories.includes(cat)}
                   onPress={() => toggleCategory(cat)}
                 />
               ))}
-            </PickerFilterRow>
+            </FilterChipRow>
           )}
 
           {selectedCategories.length > 0 && availableModels.length > 0 && (
-            <PickerFilterRow label="MODELO">
+            <FilterChipRow label="Modelo">
               {availableModels.map((model) => (
-                <PickerChip
+                <FilterChip
                   key={model}
                   label={model}
                   active={selectedModels.includes(model)}
                   onPress={() => setSelectedModels((prev) => toggle(prev, model))}
                 />
               ))}
-            </PickerFilterRow>
+            </FilterChipRow>
           )}
         </View>
 
@@ -609,8 +748,11 @@ function VehiclePickerModal({
               activeOpacity={0.75}
             >
               <View style={styles.listThumb}>
-                <Text style={styles.listThumbLabel}>{item.marca.slice(0, 5).toUpperCase()}</Text>
-                <MaterialCommunityIcons name="car-side" size={28} color={Colors.action} />
+                {item.imagens?.[0] ? (
+                  <Image source={item.imagens[0]} style={styles.listThumbImage} resizeMode="cover" />
+                ) : (
+                  <MaterialCommunityIcons name="car-side" size={28} color={Colors.action} />
+                )}
               </View>
               <View style={styles.listText}>
                 <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
@@ -626,33 +768,6 @@ function VehiclePickerModal({
   );
 }
 
-function PickerFilterRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.filterRow}>
-      <Text style={styles.filterRowLabel}>{label}</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterChipsScroll}
-      >
-        {children}
-      </ScrollView>
-    </View>
-  );
-}
-
-function PickerChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[styles.filterChip, active && styles.filterChipActive]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={[styles.filterChipLabel, active && styles.filterChipLabelActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -663,8 +778,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
+    paddingTop: 28,
+    paddingBottom: 16,
+    minHeight: 82,
   },
   headerTitle: {
     color: Colors.textPrimary,
@@ -706,7 +822,7 @@ const styles = StyleSheet.create({
 
   // Slot vazio
   slotEmpty: {
-    flex: 1,
+    width: 160,
     backgroundColor: Colors.surface,
     borderRadius: Colors.radiusLg,
     borderWidth: 1.5,
@@ -716,6 +832,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
     gap: 12,
+    position: 'relative',
+  },
+  removeEmptySlot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   plusCircle: {
     width: 48,
@@ -725,23 +847,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotTitle: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    textAlign: 'center',
-  },
   slotSubtitle: {
     color: Colors.textMuted,
     fontSize: 12,
     fontFamily: 'Sora_400Regular',
     textAlign: 'center',
   },
+  addSlot: {
+    width: 90,
+    borderRadius: Colors.radiusLg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  addSlotLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontFamily: 'Sora_500Medium',
+  },
 
   // Slot preenchido
   slotFilled: {
-    flex: 1,
+    width: 160,
     backgroundColor: Colors.surface,
     borderRadius: Colors.radiusLg,
     borderWidth: 1,
@@ -765,17 +892,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,107,107,0.12)',
   },
   imageArea: {
+    height: 100,
     backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 4,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  brandBadge: {
+  slotImage: {
+    width: '100%',
+    height: '100%',
+  },
+  brandBadgeOverlay: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
     letterSpacing: 1.5,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Colors.radiusPill,
+    overflow: 'hidden',
   },
   filledInfo: { padding: 10, gap: 3 },
   filledBrand: {
@@ -791,16 +931,59 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_700Bold',
     lineHeight: 18,
   },
-  filledEngine: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-  },
   filledPrice: {
     fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
     marginTop: 4,
+  },
+
+  // Radar
+  radarSection: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    backgroundColor: Colors.surface,
+    borderRadius: Colors.radiusLg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    alignItems: 'center',
+  },
+  radarTitle: {
+    alignSelf: 'flex-start',
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Sora_700Bold',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  radarSvgWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radarLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  radarLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  radarLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  radarLegendLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontFamily: 'Sora_400Regular',
+    maxWidth: 140,
   },
 
   // Seções
@@ -825,20 +1008,60 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
-  // Tabela
-  table: { gap: 0 },
-  tableRow: {
+
+  // Tabela em grade (linhas fixas, rolagem horizontal quando precisa)
+  attrRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    paddingVertical: 10,
-    gap: 8,
+    paddingVertical: 8,
   },
-  tableHead: {
-    borderBottomWidth: 1,
+  attrRowHead: {
     borderBottomColor: Colors.borderStrong,
-    paddingBottom: 8,
-    marginBottom: 4,
+    paddingBottom: 6,
+  },
+  attrLabelCell: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attrLabelText: {
+    color: Colors.textHint,
+    fontSize: 9,
+    fontFamily: 'Sora_600SemiBold',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  attrValueCell: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: Colors.radiusMd,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attrValueText: {
+    color: Colors.textValue,
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'Sora_700Bold',
+    textAlign: 'center',
+  },
+  cellBest: {
+    backgroundColor: `${BETTER_COLOR}22`,
+  },
+  cellWorst: {
+    backgroundColor: `${WORSE_COLOR}1a`,
+  },
+  textBest: {
+    color: BETTER_COLOR,
+  },
+  textWorst: {
+    color: WORSE_COLOR,
   },
   tableHeadText: {
     color: Colors.textMuted,
@@ -846,36 +1069,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Sora_600SemiBold',
     letterSpacing: 0.8,
-  },
-  tableCell: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
-    color: Colors.textSecondary,
-  },
-  tableCellAttr: {
-    color: Colors.textHint,
-    fontSize: 10,
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    flex: 0.8,
-  },
-  betterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 3,
-  },
-  betterLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    letterSpacing: 0.5,
+    textAlign: 'center',
   },
 
   // Modal
@@ -888,38 +1082,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.bg,
     borderTopLeftRadius: Colors.radius2xl,
     borderTopRightRadius: Colors.radius2xl,
-    paddingTop: 12,
-    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 32,
-    maxHeight: '88%',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.borderStrong,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  modalTitle: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-  clearFiltersLabel: {
-    color: Colors.accent,
-    fontSize: 12,
-    fontFamily: 'Sora_600SemiBold',
+    maxHeight: '85%',
   },
   filtersBlock: {
     gap: 10,
@@ -928,43 +1096,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  filterRow: {
-    gap: 6,
-  },
-  filterRowLabel: {
-    color: Colors.textHint,
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  filterChipsScroll: {
-    gap: 6,
-    paddingRight: 20,
-  },
-  filterChip: {
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    borderRadius: Colors.radiusPill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-  filterChipLabel: {
-    color: Colors.textPrimary,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
-  },
-  filterChipLabelActive: {
-    color: Colors.surface,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-  },
   listEmpty: {
     paddingVertical: 28,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
   listEmptyText: {
@@ -973,13 +1107,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
   },
   list: { flex: 1 },
-  listContent: { paddingBottom: 20, gap: 4 },
+  listContent: { paddingBottom: 20, paddingHorizontal: 20, gap: 4 },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 10,
-    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -990,14 +1123,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    overflow: 'hidden',
   },
-  listThumbLabel: {
-    color: Colors.accent,
-    fontSize: 8,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    letterSpacing: 1,
+  listThumbImage: {
+    width: '100%',
+    height: '100%',
   },
   listText: { flex: 1, gap: 1 },
   listBrand: {

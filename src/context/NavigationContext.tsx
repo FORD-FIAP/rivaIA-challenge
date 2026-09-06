@@ -11,6 +11,9 @@ interface NavigationContextValue {
   pendingComparisonIds: [string, string] | null;
   openComparison: (idA: string, idB: string) => void;
   clearPendingComparison: () => void;
+  pendingCompareVehicleId: string | null;
+  openCompareWithVehicle: (vehicleId: string) => void;
+  clearPendingCompareVehicle: () => void;
   sidebarOpen: boolean;
   openSidebar: () => void;
   closeSidebar: () => void;
@@ -22,6 +25,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [activeScreen, setActiveScreen] = useState<AppScreen>('Início');
   const [pendingVehicleId, setPendingVehicleId] = useState<string | null>(null);
   const [pendingComparisonIds, setPendingComparisonIds] = useState<[string, string] | null>(null);
+  const [pendingCompareVehicleId, setPendingCompareVehicleId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   function openVehicle(vehicleId: string) {
@@ -42,6 +46,15 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setPendingComparisonIds(null);
   }
 
+  function openCompareWithVehicle(vehicleId: string) {
+    setPendingCompareVehicleId(vehicleId);
+    setActiveScreen('Comparar');
+  }
+
+  function clearPendingCompareVehicle() {
+    setPendingCompareVehicleId(null);
+  }
+
   return (
     <NavigationContext.Provider
       value={{
@@ -53,6 +66,9 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
         pendingComparisonIds,
         openComparison,
         clearPendingComparison,
+        pendingCompareVehicleId,
+        openCompareWithVehicle,
+        clearPendingCompareVehicle,
         sidebarOpen,
         openSidebar: () => setSidebarOpen(true),
         closeSidebar: () => setSidebarOpen(false),

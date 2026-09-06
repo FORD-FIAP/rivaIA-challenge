@@ -9,11 +9,11 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../theme/colors';
 import { VehicleCategory } from '../../types/vehicle';
 import { vehicles, featuredVehicle } from '../../mock/veiculos';
+import { FilterSheetHeader, FilterClearLabel, FilterChipRow, FilterChip } from '../shared/FilterChips';
 
 export interface FilterState {
   brands: string[];
@@ -105,66 +105,65 @@ export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheet
 
       {/* Painel que sobe de baixo */}
       <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Filtro</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Feather name="x" size={20} color={Colors.textMuted} />
-          </TouchableOpacity>
-        </View>
+        <FilterSheetHeader
+          title="Filtro"
+          onClose={onClose}
+          rightExtra={temFiltrosAtivos ? <FilterClearLabel onPress={() => onChange(EMPTY_FILTERS)} /> : undefined}
+        />
 
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-          <FilterSection label="Marca">
+          <FilterChipRow label="Marca">
             {availableBrands.map((brand) => (
-              <Chip
+              <FilterChip
                 key={brand}
                 label={brand.charAt(0) + brand.slice(1).toLowerCase()}
                 active={filters.brands.includes(brand)}
                 onPress={() => toggleBrand(brand)}
               />
             ))}
-          </FilterSection>
+          </FilterChipRow>
 
           {mostrarCategoria && (
             <RevealSection key="categoria">
               <Divider />
-              <FilterSection label="Categoria">
+              <FilterChipRow label="Categoria">
                 {availableCategories.map((cat) => (
-                  <Chip
+                  <FilterChip
                     key={cat}
                     label={cat}
                     active={filters.categories.includes(cat)}
                     onPress={() => toggleCategory(cat)}
                   />
                 ))}
-              </FilterSection>
+              </FilterChipRow>
             </RevealSection>
           )}
 
           {mostrarAnoEModelo && (
             <RevealSection key="ano-modelo">
               <Divider />
-              <FilterSection label="Ano">
+              <FilterChipRow label="Ano">
                 {availableYears.map((year) => (
-                  <Chip
+                  <FilterChip
                     key={year}
                     label={String(year)}
                     active={filters.years.includes(year)}
                     onPress={() => onChange({ ...filters, years: toggle(filters.years, year) })}
                   />
                 ))}
-              </FilterSection>
+              </FilterChipRow>
 
               <Divider />
-              <FilterSection label="Modelo">
+              <FilterChipRow label="Modelo">
                 {availableModels.map((model) => (
-                  <Chip
+                  <FilterChip
                     key={model}
                     label={model}
                     active={filters.models.includes(model)}
                     onPress={() => onChange({ ...filters, models: toggle(filters.models, model) })}
                   />
                 ))}
-              </FilterSection>
+              </FilterChipRow>
             </RevealSection>
           )}
 
@@ -172,11 +171,6 @@ export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheet
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-          {temFiltrosAtivos && (
-            <TouchableOpacity style={styles.clearButton} onPress={() => onChange(EMPTY_FILTERS)}>
-              <Text style={styles.clearLabel}>Limpar</Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity style={styles.viewButton} onPress={onClose}>
             <Text style={styles.viewLabel}>VER RESULTADOS</Text>
           </TouchableOpacity>
@@ -210,26 +204,6 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
-function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={sectionStyles.container}>
-      <Text style={sectionStyles.label}>{label}</Text>
-      <View style={sectionStyles.chips}>{children}</View>
-    </View>
-  );
-}
-
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[chipStyles.chip, active && chipStyles.chipActive]}
-      onPress={onPress}
-    >
-      <Text style={[chipStyles.label, active && chipStyles.labelActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
@@ -246,25 +220,7 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
     paddingTop: 20,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  scroll: {
-    paddingHorizontal: 20,
-  },
+  scroll: {},
   divider: {
     height: 1,
     backgroundColor: Colors.border,
@@ -278,22 +234,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  clearButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    borderRadius: Colors.radiusPill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearLabel: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-  },
   viewButton: {
-    flex: 2,
+    flex: 1,
     backgroundColor: Colors.action,
     borderRadius: Colors.radiusPill,
     paddingVertical: 15,
@@ -305,44 +247,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
     fontFamily: 'Sora_700Bold',
-  },
-});
-
-const sectionStyles = StyleSheet.create({
-  container: {
-    marginTop: 4,
-  },
-  label: {
-    color: Colors.textPrimary,
-    fontSize: 15,
-    fontFamily: 'Sora_500Medium',
-    marginBottom: 12,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-});
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    backgroundColor: Colors.surface2,
-    borderRadius: Colors.radiusPill,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  chipActive: {
-    backgroundColor: Colors.action,
-  },
-  label: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontFamily: 'Sora_400Regular',
-  },
-  labelActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
   },
 });
