@@ -1,5 +1,5 @@
 /** Bottom sheet de filtros da tela de Veículos — sobe de baixo, cobrindo a tela */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,25 +11,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../theme/colors';
-import { VehicleCategory } from '../../types/vehicle';
-import { vehicles, featuredVehicle } from '../../mock/veiculos';
+import { getFipeBrands, FipeBrand } from '../../services/fipeApi';
 import { FilterSheetHeader, FilterClearLabel, FilterChipRow, FilterChip } from '../shared/FilterChips';
 
 export interface FilterState {
   brands: string[];
-  models: string[];
-  categories: VehicleCategory[];
-  years: number[];
 }
 
 export const EMPTY_FILTERS: FilterState = {
   brands: [],
-  models: [],
-  categories: [],
-  years: [],
 };
-
-const ALL_VEHICLES = [featuredVehicle, ...vehicles];
 
 interface FilterSheetProps {
   visible: boolean;
@@ -38,21 +29,20 @@ interface FilterSheetProps {
   onClose: () => void;
 }
 
-/** Um veículo bater com os filtros, ignorando uma dimensão (pra calcular
- * quais opções ainda fazem sentido mostrar naquela seção). */
-function matches(v: (typeof ALL_VEHICLES)[number], filters: FilterState, excluding: keyof FilterState): boolean {
-  if (excluding !== 'years' && filters.years.length > 0 && !filters.years.includes(v.ano)) return false;
-  if (excluding !== 'brands' && filters.brands.length > 0 && !filters.brands.includes(v.marca)) return false;
-  if (excluding !== 'models' && filters.models.length > 0 && !filters.models.includes(v.modelo)) return false;
-  if (excluding !== 'categories' && filters.categories.length > 0 && !filters.categories.includes(v.categoria)) return false;
-  return true;
-}
-
 export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheetProps) {
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+  const [brands, setBrands] = useState<FipeBrand[]>([]);
+
+  useEffect(() => {
+    if (visible && brands.length === 0) {
+      getFipeBrands().then((result) => {
+        if (result) setBrands([...result].sort((a, b) => a.nome.localeCompare(b.nome)));
+      });
+    }
+  }, [visible]);
 
   useEffect(() => {
     Animated.parallel([
@@ -69,31 +59,14 @@ export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheet
     ]).start();
   }, [visible]);
 
-  const availableBrands = [...new Set(ALL_VEHICLES.filter((v) => matches(v, filters, 'brands')).map((v) => v.marca))]
-    .sort((a, b) => a.localeCompare(b));
-  const availableCategories = ([...new Set(ALL_VEHICLES.filter((v) => matches(v, filters, 'categories')).map((v) => v.categoria))] as VehicleCategory[])
-    .sort((a, b) => a.localeCompare(b));
-  const availableYears = [...new Set(ALL_VEHICLES.filter((v) => matches(v, filters, 'years')).map((v) => v.ano))]
-    .sort((a, b) => a - b);
-  const availableModels = [...new Set(ALL_VEHICLES.filter((v) => matches(v, filters, 'models')).map((v) => v.modelo))]
-    .sort((a, b) => a.localeCompare(b));
-
-  const mostrarCategoria = filters.brands.length > 0;
-  const mostrarAnoEModelo = filters.categories.length > 0;
-  const temFiltrosAtivos =
-    filters.brands.length > 0 || filters.categories.length > 0 || filters.years.length > 0 || filters.models.length > 0;
+  const temFiltrosAtivos = filters.brands.length > 0;
 
   function toggle<T>(list: T[], value: T): T[] {
     return list.includes(value) ? list.filter((i) => i !== value) : [...list, value];
   }
 
   function toggleBrand(brand: string) {
-    // Ao mudar a marca, os passos seguintes recomeçam do zero.
-    onChange({ brands: toggle(filters.brands, brand), categories: [], years: [], models: [] });
-  }
-
-  function toggleCategory(cat: VehicleCategory) {
-    onChange({ ...filters, categories: toggle(filters.categories, cat), years: [], models: [] });
+    onChange({ brands: toggle(filters.brands, brand) });
   }
 
   return (
@@ -113,59 +86,15 @@ export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheet
 
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
           <FilterChipRow label="Marca">
-            {availableBrands.map((brand) => (
+            {brands.map((brand) => (
               <FilterChip
-                key={brand}
-                label={brand.charAt(0) + brand.slice(1).toLowerCase()}
-                active={filters.brands.includes(brand)}
-                onPress={() => toggleBrand(brand)}
+                key={brand.valor}
+                label={brand.nome}
+                active={filters.brands.includes(brand.nome)}
+                onPress={() => toggleBrand(brand.nome)}
               />
             ))}
           </FilterChipRow>
-
-          {mostrarCategoria && (
-            <RevealSection key="categoria">
-              <Divider />
-              <FilterChipRow label="Categoria">
-                {availableCategories.map((cat) => (
-                  <FilterChip
-                    key={cat}
-                    label={cat}
-                    active={filters.categories.includes(cat)}
-                    onPress={() => toggleCategory(cat)}
-                  />
-                ))}
-              </FilterChipRow>
-            </RevealSection>
-          )}
-
-          {mostrarAnoEModelo && (
-            <RevealSection key="ano-modelo">
-              <Divider />
-              <FilterChipRow label="Ano">
-                {availableYears.map((year) => (
-                  <FilterChip
-                    key={year}
-                    label={String(year)}
-                    active={filters.years.includes(year)}
-                    onPress={() => onChange({ ...filters, years: toggle(filters.years, year) })}
-                  />
-                ))}
-              </FilterChipRow>
-
-              <Divider />
-              <FilterChipRow label="Modelo">
-                {availableModels.map((model) => (
-                  <FilterChip
-                    key={model}
-                    label={model}
-                    active={filters.models.includes(model)}
-                    onPress={() => onChange({ ...filters, models: toggle(filters.models, model) })}
-                  />
-                ))}
-              </FilterChipRow>
-            </RevealSection>
-          )}
 
           <View style={{ height: 12 }} />
         </ScrollView>
@@ -178,30 +107,6 @@ export function FilterSheet({ visible, filters, onChange, onClose }: FilterSheet
       </Animated.View>
     </View>
   );
-}
-
-/** Aparece com um fade + leve deslize de baixo pra cima, ao montar. */
-function RevealSection({ children }: { children: React.ReactNode }) {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(anim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
-  }, []);
-
-  return (
-    <Animated.View
-      style={{
-        opacity: anim,
-        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-}
-
-function Divider() {
-  return <View style={styles.divider} />;
 }
 
 const styles = StyleSheet.create({
@@ -221,11 +126,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   scroll: {},
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 18,
-  },
   footer: {
     flexDirection: 'row',
     gap: 12,

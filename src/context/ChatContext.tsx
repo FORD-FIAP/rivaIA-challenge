@@ -1,11 +1,12 @@
 /**
  * ChatContext — gerencia o estado do chat da Home.
  *
- * Ainda não existe IA de verdade por trás (isso chega com o backend +
- * Gemini Flash). Por enquanto, toda mensagem do usuário é exibida de
- * verdade e recebe uma resposta fixa avisando que a IA está em construção.
- * Persiste o histórico em AsyncStorage e arquiva a conversa em
- * ConversasRecentesContext para aparecer na Sidebar.
+ * A resposta vem do backend (função serverless em `/api/chat`, proxy pro
+ * Gemini Flash) via `sendChatMessage`. Enquanto o backend não estiver
+ * deployado (ou se a chamada falhar), cai automaticamente na mensagem de
+ * placeholder — nunca quebra a conversa. Persiste o histórico em
+ * AsyncStorage e arquiva a conversa em ConversasRecentesContext para
+ * aparecer na Sidebar.
  */
 import React, {
   createContext,
@@ -19,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { useConversasRecentesContext } from './ConversasRecentesContext';
 import { ChatMessage } from '../hooks/useConversasRecentes';
+import { sendChatMessage } from '../services/rivaChatApi';
 
 export type { ChatMessage };
 
@@ -93,14 +95,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed };
+    const historySnapshot = [...state.messages, userMsg];
     setState((prev) => ({ ...prev, messages: [...prev.messages, userMsg] }));
     setIsTyping(true);
-    setTimeout(() => {
-      const rivaMsg: ChatMessage = { id: `riva-${Date.now()}`, role: 'riva', text: RESPOSTA_EM_CONSTRUCAO };
+
+    const minDelay = new Promise<void>((resolve) => setTimeout(resolve, TYPING_DELAY_MS));
+
+    Promise.all([sendChatMessage(trimmed, historySnapshot), minDelay]).then(([reply]) => {
+      const rivaMsg: ChatMessage = {
+        id: `riva-${Date.now()}`,
+        role: 'riva',
+        text: reply ?? RESPOSTA_EM_CONSTRUCAO,
+      };
       setState((prev) => ({ ...prev, messages: [...prev.messages, rivaMsg] }));
       setIsTyping(false);
-    }, TYPING_DELAY_MS);
-  }, []);
+    });
+  }, [state.messages]);
 
   const resetChat = useCallback(() => {
     setIsTyping(false);

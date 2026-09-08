@@ -1,93 +1,29 @@
-/** Tela de comparação de veículos — até 4 modelos lado a lado */
+/** Tela de comparação de veículos — até 4 modelos, marca/modelo/preço reais da FIPE */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   FlatList,
   ScrollView,
   Animated,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import Svg, { Polygon, Line, Text as SvgText } from 'react-native-svg';
 import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
-import { vehicles, featuredVehicle } from '../mock/veiculos';
+import { getFipeBrands, getFipeModels, buildVehicleFromFipe, cacheVehicles, getCachedVehicle, FipeBrand } from '../services/fipeApi';
+import { useFipePrice } from '../hooks/useFipePrice';
 import { Vehicle } from '../types/vehicle';
 import { FilterSheetHeader, FilterClearLabel, FilterChipRow, FilterChip } from '../components/shared/FilterChips';
 
-const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
-
 const MAX_SLOTS = 4;
 const SLOT_COLORS = [Colors.accent, '#7B6FE8', '#FF9F45', '#F472B6'];
-const BETTER_COLOR = '#3DDC84';
-const WORSE_COLOR = '#FF6B6B';
-
-type CellState = 'best' | 'worst' | 'neutral';
-
-interface AttrSpec {
-  label: string;
-  unit?: string;
-  get: (v: Vehicle) => string | number | undefined;
-  /** Quando true, o valor é numérico (ou tem número extraível) e pode ser comparado. */
-  numeric?: boolean;
-  /** Quando definido, valores que batem com o regex viram "1" (positivo) e o resto "0". */
-  positiveRegex?: RegExp;
-  higherIsBetter?: boolean;
-}
-
-function parseLeadingNumber(value: unknown): number | undefined {
-  if (typeof value === 'number') return isNaN(value) ? undefined : value;
-  if (typeof value !== 'string') return undefined;
-  const match = value.replace(',', '.').match(/-?\d+(\.\d+)?/);
-  return match ? Number(match[0]) : undefined;
-}
-
-/** Calcula, pra uma lista de veículos, o valor formatado + estado (melhor/pior/neutro) de cada um numa linha. */
-function resolveRow(vehiclesInView: Vehicle[], spec: AttrSpec): { text: string; state: CellState }[] {
-  const raw = vehiclesInView.map((v) => spec.get(v));
-
-  if (!spec.numeric && !spec.positiveRegex) {
-    return raw.map((r) => ({ text: r !== undefined && r !== null && r !== '' ? String(r) : '—', state: 'neutral' }));
-  }
-
-  const higherIsBetter = spec.higherIsBetter !== false;
-  const scores = raw.map((r) => {
-    if (spec.positiveRegex) {
-      if (r === undefined) return undefined;
-      return spec.positiveRegex.test(String(r)) ? 1 : 0;
-    }
-    return parseLeadingNumber(r);
-  });
-
-  const defined = scores.filter((s): s is number => s !== undefined);
-  const distinct = new Set(defined);
-  const canHighlight = distinct.size > 1;
-  const best = canHighlight ? (higherIsBetter ? Math.max(...defined) : Math.min(...defined)) : undefined;
-  const worst = canHighlight ? (higherIsBetter ? Math.min(...defined) : Math.max(...defined)) : undefined;
-
-  return raw.map((r, i) => {
-    const score = scores[i];
-    let state: CellState = 'neutral';
-    if (canHighlight && score !== undefined) {
-      if (score === best && score !== worst) state = 'best';
-      else if (score === worst && score !== best) state = 'worst';
-    }
-    const text =
-      r === undefined || r === null || r === ''
-        ? '—'
-        : spec.positiveRegex
-        ? String(r)
-        : `${r}${spec.unit ? ` ${spec.unit}` : ''}`;
-    return { text, state };
-  });
-}
 
 // ─── Tela principal ──────────────────────────────────────────────────────────
 
@@ -103,10 +39,6 @@ export function CompararScreen() {
   const { isAuthenticated, requestLogin } = useAuth();
   const [slots, setSlots] = useState<(Vehicle | null)[]>([null, null]);
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
-  const [motorOpen, setMotorOpen] = useState(true);
-  const [carroceriaOpen, setCarroceriaOpen] = useState(true);
-  const [offRoadOpen, setOffRoadOpen] = useState(true);
-  const [segurancaOpen, setSegurancaOpen] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
   const filledVehicles = slots.filter((v): v is Vehicle => v !== null);
@@ -121,8 +53,8 @@ export function CompararScreen() {
   useEffect(() => {
     if (pendingComparisonIds) {
       const [idA, idB] = pendingComparisonIds;
-      const a = ALL_VEHICLES.find((v) => v.id === idA) ?? null;
-      const b = ALL_VEHICLES.find((v) => v.id === idB) ?? null;
+      const a = getCachedVehicle(idA) ?? null;
+      const b = getCachedVehicle(idB) ?? null;
       if (a && b) setSlots([a, b]);
       clearPendingComparison();
     }
@@ -130,7 +62,7 @@ export function CompararScreen() {
 
   useEffect(() => {
     if (pendingCompareVehicleId) {
-      const vehicle = ALL_VEHICLES.find((v) => v.id === pendingCompareVehicleId) ?? null;
+      const vehicle = getCachedVehicle(pendingCompareVehicleId) ?? null;
       if (vehicle) {
         setSlots([vehicle, null]);
         setPickingSlot(1);
@@ -157,11 +89,6 @@ export function CompararScreen() {
   function removeVehicle(index: number) {
     setSlots((prev) => {
       const next = [...prev];
-      // Slots extras (3º/4º) vazios somem; os 2 primeiros só ficam vazios.
-      if (index >= 2 && next[index] !== null) {
-        next[index] = null;
-        return next;
-      }
       next[index] = null;
       return next;
     });
@@ -253,72 +180,26 @@ export function CompararScreen() {
           )}
         </ScrollView>
 
-        {/* ── Seções de comparação (a partir de 2 selecionados) ── */}
+        {/* ── Comparação (a partir de 2 selecionados) — só marca/modelo/preço, dados reais da FIPE ── */}
         {comparisonReady && (
-          <>
-            <RadarSection vehicles={filledVehicles} colors={SLOT_COLORS} />
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="cash-multiple" size={16} color={Colors.accent} />
+              <Text style={styles.sectionTitle}>Identificação & Preço FIPE</Text>
+            </View>
 
-            <ComparisonSection
-              icon={<MaterialCommunityIcons name="engine-outline" size={16} color={Colors.accent} />}
-              title="Motor & Desempenho"
-              vehicles={filledVehicles}
-              colors={SLOT_COLORS}
-              open={motorOpen}
-              onToggle={() => setMotorOpen((o) => !o)}
-              attrs={[
-                { label: 'Potência', get: (v) => v.motorizacao_desempenho?.potencia, numeric: true, unit: 'cv' },
-                { label: 'Torque', get: (v) => v.motorizacao_desempenho?.torque, numeric: true, unit: 'Nm' },
-                { label: 'Combustível', get: (v) => v.motorizacao_desempenho?.combustivel },
-                { label: '0-100 km/h', get: (v) => v.motorizacao_desempenho?.aceleracao, numeric: true, higherIsBetter: false },
-              ]}
-            />
+            {filledVehicles.map((v, i) => (
+              <PriceRow key={v.id} vehicle={v} color={SLOT_COLORS[i % SLOT_COLORS.length]} />
+            ))}
 
-            <ComparisonSection
-              icon={<Feather name="edit-2" size={15} color={Colors.accent} />}
-              title="Carroceria & Dimensões"
-              vehicles={filledVehicles}
-              colors={SLOT_COLORS}
-              open={carroceriaOpen}
-              onToggle={() => setCarroceriaOpen((o) => !o)}
-              attrs={[
-                { label: 'Comprimento', get: (v) => v.dimensoes?.comprimento, numeric: true, unit: 'mm' },
-                { label: 'Largura', get: (v) => v.dimensoes?.largura, numeric: true, unit: 'mm' },
-                { label: 'Altura', get: (v) => v.dimensoes?.altura, numeric: true, unit: 'mm' },
-                { label: 'Cap. Carga', get: (v) => v.capacidade?.capacidade_reboque, numeric: true },
-              ]}
-            />
-
-            <ComparisonSection
-              icon={<MaterialCommunityIcons name="terrain" size={16} color={Colors.accent} />}
-              title="Off-Road & Tração"
-              vehicles={filledVehicles}
-              colors={SLOT_COLORS}
-              open={offRoadOpen}
-              onToggle={() => setOffRoadOpen((o) => !o)}
-              attrs={[
-                { label: 'Ângulo de ataque', get: (v) => v.off_road?.angulo_ataque, numeric: true, unit: '°' },
-                { label: 'Ângulo de saída', get: (v) => v.off_road?.angulo_saida, numeric: true, unit: '°' },
-                { label: 'Prof. na água', get: (v) => v.off_road?.profundidade_agua, numeric: true, unit: 'mm' },
-                { label: 'Diferencial bloqueável', get: (v) => v.off_road?.diferencial_traseiro_bloqueavel, positiveRegex: /sim/i },
-                { label: 'Controle de descida', get: (v) => v.off_road?.controle_descida, positiveRegex: /sim/i },
-              ]}
-            />
-
-            <ComparisonSection
-              icon={<MaterialCommunityIcons name="shield-check-outline" size={16} color={Colors.accent} />}
-              title="Segurança"
-              vehicles={filledVehicles}
-              colors={SLOT_COLORS}
-              open={segurancaOpen}
-              onToggle={() => setSegurancaOpen((o) => !o)}
-              attrs={[
-                { label: 'Airbags', get: (v) => v.tecnologia_seguranca?.airbags, numeric: true },
-                { label: 'Frenagem autônoma', get: (v) => v.tecnologia_seguranca?.frenagem_automatica, positiveRegex: /sim|autônoma|aeb/i },
-                { label: 'Alerta ponto cego', get: (v) => v.tecnologia_seguranca?.alerta_ponto_cego, positiveRegex: /sim/i },
-                { label: 'Câmera 360°', get: (v) => v.tecnologia_seguranca?.camera_360, positiveRegex: /sim/i },
-              ]}
-            />
-          </>
+            <View style={styles.noticeBox}>
+              <Feather name="info" size={14} color={Colors.textMuted} />
+              <Text style={styles.noticeText}>
+                Comparação por motor, dimensões, off-road e segurança ainda não está disponível —
+                depende de uma API específica pra ficha técnica, que ainda não integramos.
+              </Text>
+            </View>
+          </View>
         )}
 
         <View style={{ height: 40 }} />
@@ -331,6 +212,22 @@ export function CompararScreen() {
         onClose={() => setPickingSlot(null)}
       />
     </SafeAreaView>
+  );
+}
+
+// ─── Linha de preço por veículo (dado real da FIPE, com fallback) ────────────
+
+function PriceRow({ vehicle, color }: { vehicle: Vehicle; color: string }) {
+  const fipe = useFipePrice(vehicle.fipeCode, vehicle.preco ?? '');
+  return (
+    <View style={styles.priceRow}>
+      <View style={[styles.priceDot, { backgroundColor: color }]} />
+      <View style={styles.priceInfo}>
+        <Text style={styles.priceBrand}>{vehicle.marca}</Text>
+        <Text style={styles.priceModel} numberOfLines={1}>{vehicle.modelo}</Text>
+      </View>
+      <Text style={styles.priceValue}>{fipe.price || 'Indisponível'}</Text>
+    </View>
   );
 }
 
@@ -365,23 +262,19 @@ function FilledSlot({
   onSwap: () => void;
   onRemove: () => void;
 }) {
-  const foto = vehicle.imagens?.[0];
+  const fipe = useFipePrice(vehicle.fipeCode, vehicle.preco ?? '');
 
   return (
     <View style={styles.slotFilled}>
       <View style={styles.imageArea}>
-        {foto ? (
-          <Image source={foto} style={styles.slotImage} resizeMode="cover" />
-        ) : (
-          <MaterialCommunityIcons name="car-side" size={56} color={color} />
-        )}
+        <MaterialCommunityIcons name="car-side" size={56} color={color} />
         <Text style={[styles.brandBadgeOverlay, { color }]}>{vehicle.marca.toUpperCase()}</Text>
       </View>
 
       <View style={styles.filledInfo}>
         <Text style={[styles.filledBrand, { color }]}>{vehicle.marca.toUpperCase()}</Text>
         <Text style={styles.filledName} numberOfLines={2}>{vehicle.modelo}</Text>
-        <Text style={[styles.filledPrice, { color }]}>{vehicle.preco}</Text>
+        <Text style={[styles.filledPrice, { color }]} numberOfLines={1}>{fipe.price || 'Indisponível'}</Text>
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={onSwap} activeOpacity={0.8}>
@@ -400,184 +293,7 @@ function FilledSlot({
   );
 }
 
-// ─── Seção de comparação (linhas valor-label-valor, sem rolagem lateral) ─────
-
-function ComparisonSection({
-  icon,
-  title,
-  vehicles: vehiclesInView,
-  colors,
-  open,
-  onToggle,
-  attrs,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  vehicles: Vehicle[];
-  colors: string[];
-  open: boolean;
-  onToggle: () => void;
-  attrs: AttrSpec[];
-}) {
-  return (
-    <View style={styles.section}>
-      <TouchableOpacity style={styles.sectionHeader} onPress={onToggle} activeOpacity={0.7}>
-        {icon}
-        <Text style={[styles.sectionTitle, { flex: 1 }]}>{title}</Text>
-        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-      </TouchableOpacity>
-
-      {open && (
-        <View>
-          <View style={[styles.attrRow, styles.attrRowHead]}>
-            {vehiclesInView.map((v, i) => (
-              <View key={v.id} style={styles.attrValueCell}>
-                <Text style={[styles.tableHeadText, { color: colors[i % colors.length] }]} numberOfLines={1}>
-                  {v.marca}
-                </Text>
-              </View>
-            ))}
-            <View style={styles.attrLabelCell}>
-              <Text style={styles.tableHeadText}>ATRIBUTO</Text>
-            </View>
-          </View>
-
-          {attrs.map((spec) => {
-            const cells = resolveRow(vehiclesInView, spec);
-            return (
-              <View key={spec.label} style={styles.attrRow}>
-                {cells.map((c, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.attrValueCell,
-                      c.state === 'best' && styles.cellBest,
-                      c.state === 'worst' && styles.cellWorst,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.attrValueText,
-                        c.state === 'best' && styles.textBest,
-                        c.state === 'worst' && styles.textWorst,
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {c.text}
-                    </Text>
-                  </View>
-                ))}
-                <View style={styles.attrLabelCell}>
-                  <Text style={styles.attrLabelText} numberOfLines={2}>{spec.label}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Radar de atributos (gráfico visual das diferenças) ─────────────────────
-
-const RADAR_AXES: { label: string; get: (v: Vehicle) => number | undefined }[] = [
-  { label: 'Potência', get: (v) => parseLeadingNumber(v.motorizacao_desempenho?.potencia) },
-  { label: 'Torque', get: (v) => parseLeadingNumber(v.motorizacao_desempenho?.torque) },
-  { label: 'Off-road', get: (v) => v.off_road?.angulo_ataque },
-  { label: 'Segurança', get: (v) => v.tecnologia_seguranca?.airbags },
-  { label: 'Reboque', get: (v) => parseLeadingNumber(v.capacidade?.capacidade_reboque) },
-];
-
-function RadarSection({ vehicles: vehiclesInView, colors }: { vehicles: Vehicle[]; colors: string[] }) {
-  const size = 260;
-  const center = size / 2;
-  const radius = size / 2 - 42;
-  const axisCount = RADAR_AXES.length;
-
-  const anglePoint = (index: number, r: number) => {
-    const angle = (Math.PI * 2 * index) / axisCount - Math.PI / 2;
-    return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
-  };
-
-  const maxPerAxis = RADAR_AXES.map((axis) => {
-    const values = vehiclesInView.map((v) => axis.get(v) ?? 0);
-    return Math.max(...values, 1);
-  });
-
-  const polygons = vehiclesInView.map((v, vi) => {
-    const points = RADAR_AXES.map((axis, ai) => {
-      const value = axis.get(v) ?? 0;
-      const normalized = Math.max(0, Math.min(1, value / maxPerAxis[ai]));
-      return anglePoint(ai, normalized * radius);
-    });
-    return { points: points.map((p) => `${p.x},${p.y}`).join(' '), color: colors[vi % colors.length] };
-  });
-
-  const rings = [0.25, 0.5, 0.75, 1];
-
-  return (
-    <View style={styles.radarSection}>
-      <Text style={styles.radarTitle}>RADAR DE ATRIBUTOS</Text>
-      <View style={styles.radarSvgWrap}>
-        <Svg width={size} height={size}>
-          {rings.map((ring) => (
-            <Polygon
-              key={ring}
-              points={RADAR_AXES.map((_, ai) => {
-                const p = anglePoint(ai, ring * radius);
-                return `${p.x},${p.y}`;
-              }).join(' ')}
-              fill="none"
-              stroke={Colors.border}
-              strokeWidth={1}
-            />
-          ))}
-          {RADAR_AXES.map((axis, ai) => {
-            const p = anglePoint(ai, radius);
-            return <Line key={ai} x1={center} y1={center} x2={p.x} y2={p.y} stroke={Colors.border} strokeWidth={1} />;
-          })}
-          {polygons.map((poly, i) => (
-            <Polygon
-              key={i}
-              points={poly.points}
-              fill={poly.color}
-              fillOpacity={0.18}
-              stroke={poly.color}
-              strokeWidth={2}
-            />
-          ))}
-          {RADAR_AXES.map((axis, ai) => {
-            const p = anglePoint(ai, radius + 18);
-            return (
-              <SvgText
-                key={axis.label}
-                x={p.x}
-                y={p.y}
-                fill={Colors.textSecondary}
-                fontSize={10}
-                fontFamily="Sora_600SemiBold"
-                textAnchor="middle"
-              >
-                {axis.label}
-              </SvgText>
-            );
-          })}
-        </Svg>
-      </View>
-      <View style={styles.radarLegend}>
-        {vehiclesInView.map((v, i) => (
-          <View key={v.id} style={styles.radarLegendItem}>
-            <View style={[styles.radarLegendDot, { backgroundColor: colors[i % colors.length] }]} />
-            <Text style={styles.radarLegendLabel} numberOfLines={1}>{v.marca} {v.modelo}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ─── Modal de seleção ─────────────────────────────────────────────────────────
+// ─── Modal de seleção (busca real na FIPE) ───────────────────────────────────
 
 function VehiclePickerModal({
   visible,
@@ -594,74 +310,43 @@ function VehiclePickerModal({
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [brands, setBrands] = useState<FipeBrand[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<FipeBrand | null>(null);
+  const [models, setModels] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (visible) {
-      setSelectedBrands([]);
-      setSelectedCategories([]);
-      setSelectedModels([]);
+    if (visible && brands.length === 0) {
+      getFipeBrands().then((result) => {
+        if (result) setBrands([...result].sort((a, b) => a.nome.localeCompare(b.nome)));
+      });
     }
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: visible ? 0 : screenHeight,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropAnim, {
-        toValue: visible ? 1 : 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: screenHeight, duration: 300, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start();
+      setSelectedBrand(null);
+      setModels([]);
+    }
   }, [visible]);
 
   const excludedIds = new Set(excluded.map((v) => v.id));
 
-  // Chips: usam o catálogo COMPLETO (Ranger e similares devem aparecer mesmo quando
-  // a única versão disponível já está selecionada na comparação).
-  const allBrands = [...new Set(ALL_VEHICLES.map((v) => v.marca))];
-
-  const filteredByBrand = selectedBrands.length > 0
-    ? ALL_VEHICLES.filter((v) => selectedBrands.includes(v.marca))
-    : ALL_VEHICLES;
-  const availableCategories = [...new Set(filteredByBrand.map((v) => v.categoria))];
-
-  const filteredByBrandAndCategory = selectedCategories.length > 0
-    ? filteredByBrand.filter((v) => selectedCategories.includes(v.categoria))
-    : filteredByBrand;
-  const availableModels = [...new Set(filteredByBrandAndCategory.map((v) => v.modelo))];
-
-  const hasAnyFilter =
-    selectedBrands.length + selectedCategories.length + selectedModels.length > 0;
-
-  // Lista de carros só aparece quando algum filtro foi aplicado; sempre exclui o já comparado.
-  const available = hasAnyFilter
-    ? (selectedModels.length > 0
-        ? filteredByBrandAndCategory.filter((v) => selectedModels.includes(v.modelo))
-        : filteredByBrandAndCategory
-      ).filter((v) => !excludedIds.has(v.id))
-    : [];
-
-  function toggle<T>(list: T[], value: T): T[] {
-    return list.includes(value) ? list.filter((i) => i !== value) : [...list, value];
-  }
-
-  function toggleBrand(brand: string) {
-    const next = toggle(selectedBrands, brand);
-    const nextScope = next.length > 0 ? ALL_VEHICLES.filter((v) => next.includes(v.marca)) : ALL_VEHICLES;
-    setSelectedBrands(next);
-    setSelectedCategories((prev) => prev.filter((c) => nextScope.some((v) => v.categoria === c)));
-    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
-  }
-
-  function toggleCategory(cat: string) {
-    const next = toggle(selectedCategories, cat);
-    const nextScope = next.length > 0 ? filteredByBrand.filter((v) => next.includes(v.categoria)) : filteredByBrand;
-    setSelectedCategories(next);
-    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
+  function selectBrand(brand: FipeBrand) {
+    setSelectedBrand(brand);
+    setLoading(true);
+    getFipeModels(brand.valor).then((result) => {
+      const vehiclesList = (result ?? []).map((m) => buildVehicleFromFipe(brand, m));
+      cacheVehicles(vehiclesList);
+      setModels(vehiclesList.filter((v) => !excludedIds.has(v.id)));
+      setLoading(false);
+    });
   }
 
   return (
@@ -675,94 +360,59 @@ function VehiclePickerModal({
           title="Escolher veículo"
           onClose={onClose}
           rightExtra={
-            hasAnyFilter ? (
-              <FilterClearLabel
-                onPress={() => {
-                  setSelectedBrands([]);
-                  setSelectedCategories([]);
-                  setSelectedModels([]);
-                }}
-              />
-            ) : undefined
+            selectedBrand ? <FilterClearLabel onPress={() => { setSelectedBrand(null); setModels([]); }} /> : undefined
           }
         />
 
         <View style={styles.filtersBlock}>
           <FilterChipRow label="Marca">
-            {allBrands.map((brand) => (
+            {brands.map((brand) => (
               <FilterChip
-                key={brand}
-                label={brand.charAt(0) + brand.slice(1).toLowerCase()}
-                active={selectedBrands.includes(brand)}
-                onPress={() => toggleBrand(brand)}
+                key={brand.valor}
+                label={brand.nome}
+                active={selectedBrand?.valor === brand.valor}
+                onPress={() => selectBrand(brand)}
               />
             ))}
           </FilterChipRow>
-
-          {selectedBrands.length > 0 && availableCategories.length > 0 && (
-            <FilterChipRow label="Categoria">
-              {availableCategories.map((cat) => (
-                <FilterChip
-                  key={cat}
-                  label={cat}
-                  active={selectedCategories.includes(cat)}
-                  onPress={() => toggleCategory(cat)}
-                />
-              ))}
-            </FilterChipRow>
-          )}
-
-          {selectedCategories.length > 0 && availableModels.length > 0 && (
-            <FilterChipRow label="Modelo">
-              {availableModels.map((model) => (
-                <FilterChip
-                  key={model}
-                  label={model}
-                  active={selectedModels.includes(model)}
-                  onPress={() => setSelectedModels((prev) => toggle(prev, model))}
-                />
-              ))}
-            </FilterChipRow>
-          )}
         </View>
 
-        <FlatList
-          data={available}
-          keyExtractor={(v) => v.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          style={styles.list}
-          ListEmptyComponent={
-            <View style={styles.listEmpty}>
-              <Text style={styles.listEmptyText}>
-                {hasAnyFilter
-                  ? 'Nenhum veículo com esses filtros'
-                  : 'Selecione marca, categoria ou modelo para ver os carros'}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.listRow}
-              onPress={() => onSelect(item)}
-              activeOpacity={0.75}
-            >
-              <View style={styles.listThumb}>
-                {item.imagens?.[0] ? (
-                  <Image source={item.imagens[0]} style={styles.listThumbImage} resizeMode="cover" />
-                ) : (
+        {loading ? (
+          <View style={styles.listEmpty}>
+            <ActivityIndicator color={Colors.accent} />
+          </View>
+        ) : (
+          <FlatList
+            data={models}
+            keyExtractor={(v) => v.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            style={styles.list}
+            ListEmptyComponent={
+              <View style={styles.listEmpty}>
+                <Text style={styles.listEmptyText}>
+                  {selectedBrand ? 'Nenhum modelo encontrado' : 'Selecione uma marca para ver os modelos'}
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.listRow}
+                onPress={() => onSelect(item)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.listThumb}>
                   <MaterialCommunityIcons name="car-side" size={28} color={Colors.action} />
-                )}
-              </View>
-              <View style={styles.listText}>
-                <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
-                <Text style={styles.listName}>{item.versao}</Text>
-                <Text style={styles.listPrice}>{item.preco}</Text>
-              </View>
-              <Feather name="plus" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        />
+                </View>
+                <View style={styles.listText}>
+                  <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
+                  <Text style={styles.listName} numberOfLines={2}>{item.modelo}</Text>
+                </View>
+                <Feather name="plus" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          />
+        )}
       </Animated.View>
     </View>
   );
@@ -899,10 +549,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  slotImage: {
-    width: '100%',
-    height: '100%',
-  },
   brandBadgeOverlay: {
     position: 'absolute',
     top: 8,
@@ -938,55 +584,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Radar
-  radarSection: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: Colors.surface,
-    borderRadius: Colors.radiusLg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 16,
-    alignItems: 'center',
-  },
-  radarTitle: {
-    alignSelf: 'flex-start',
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  radarSvgWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radarLegend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  radarLegendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  radarLegendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  radarLegendLabel: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
-    maxWidth: 140,
-  },
-
-  // Seções
+  // Seção de comparação simples
   section: {
     marginHorizontal: 20,
     marginTop: 24,
@@ -1008,68 +606,57 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
-
-  // Tabela em grade (linhas fixas, rolagem horizontal quando precisa)
-  attrRow: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 10,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    paddingVertical: 8,
   },
-  attrRowHead: {
-    borderBottomColor: Colors.borderStrong,
-    paddingBottom: 6,
+  priceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  attrLabelCell: {
-    width: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attrLabelText: {
-    color: Colors.textHint,
-    fontSize: 9,
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-  attrValueCell: {
+  priceInfo: {
     flex: 1,
-    minWidth: 0,
-    borderRadius: Colors.radiusMd,
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 1,
   },
-  attrValueText: {
-    color: Colors.textValue,
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    textAlign: 'center',
-  },
-  cellBest: {
-    backgroundColor: `${BETTER_COLOR}22`,
-  },
-  cellWorst: {
-    backgroundColor: `${WORSE_COLOR}1a`,
-  },
-  textBest: {
-    color: BETTER_COLOR,
-  },
-  textWorst: {
-    color: WORSE_COLOR,
-  },
-  tableHeadText: {
-    color: Colors.textMuted,
+  priceBrand: {
+    color: Colors.textHint,
     fontSize: 10,
+    fontFamily: 'Sora_600SemiBold',
+    letterSpacing: 0.5,
+  },
+  priceModel: {
+    color: Colors.textPrimary,
+    fontSize: 13,
     fontWeight: '600',
     fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.8,
-    textAlign: 'center',
+  },
+  priceValue: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Sora_700Bold',
+  },
+  noticeBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: Colors.surface2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Colors.radiusMd,
+    padding: 12,
+    marginTop: 14,
+  },
+  noticeText: {
+    flex: 1,
+    color: Colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: 'Sora_400Regular',
   },
 
   // Modal
@@ -1125,10 +712,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  listThumbImage: {
-    width: '100%',
-    height: '100%',
-  },
   listText: { flex: 1, gap: 1 },
   listBrand: {
     color: Colors.accent,
@@ -1141,10 +724,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
-  },
-  listPrice: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
   },
 });

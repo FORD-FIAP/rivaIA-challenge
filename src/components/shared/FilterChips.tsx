@@ -42,8 +42,8 @@ export function FilterChipRow({ label, children }: { label: string; children: Re
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-        {children}
+      <ScrollView style={styles.chipsScrollArea} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+        <View style={styles.chipsWrap}>{children}</View>
       </ScrollView>
     </View>
   );
@@ -97,9 +97,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  chipsScroll: {
-    gap: 6,
+  chipsScrollArea: {
+    maxHeight: 180,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     paddingRight: 20,
+    paddingBottom: 4,
   },
   chip: {
     borderWidth: 1,

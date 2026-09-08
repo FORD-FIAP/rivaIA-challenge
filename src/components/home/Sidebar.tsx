@@ -19,10 +19,8 @@ import { useConversasRecentesContext } from '../../context/ConversasRecentesCont
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { ConversaArquivada } from '../../hooks/useConversasRecentes';
 import { noticias } from '../../mock/noticias';
-import { vehicles, featuredVehicle } from '../../mock/veiculos';
+import { getCachedVehicle } from '../../services/fipeApi';
 import { Vehicle } from '../../types/vehicle';
-
-const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
 
 interface SidebarProps {
   visible: boolean;
@@ -63,7 +61,7 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   const { conversas: conversasRecentes } = useConversasRecentesContext();
   const { favorites } = useFavoritesContext();
   const favoriteVehicles = favorites
-    .map((id) => ALL_VEHICLES.find((v) => v.id === id))
+    .map((id) => getCachedVehicle(id))
     .filter((v): v is Vehicle => v !== undefined);
   const [view, setView] = useState<'menu' | 'chats'>('menu');
   const [filtro, setFiltro] = useState<'todos' | 'favoritos'>('todos');

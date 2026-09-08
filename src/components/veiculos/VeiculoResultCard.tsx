@@ -1,10 +1,10 @@
-/** Card usado na listagem de resultados da tela de Veículos — foto full-width + stats rápidos */
+/** Card usado na listagem de resultados da tela de Veículos — marca/modelo reais da FIPE */
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Vehicle } from '../../types/vehicle';
 import { Colors } from '../../theme/colors';
+import { useFipePrice } from '../../hooks/useFipePrice';
 
 interface VeiculoResultCardProps {
   vehicle: Vehicle;
@@ -12,96 +12,65 @@ interface VeiculoResultCardProps {
 }
 
 export function VeiculoResultCard({ vehicle, onPress }: VeiculoResultCardProps) {
-  const imagem = vehicle.imagens?.[0];
+  const fipe = useFipePrice(vehicle.fipeCode, vehicle.preco ?? '');
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.85}>
-      {/* Foto full-width com nome sobreposto */}
-      <View style={styles.imageArea}>
-        {imagem ? (
-          <Image source={imagem} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <MaterialCommunityIcons name="car-side" size={48} color={Colors.action} />
-          </View>
-        )}
-        <LinearGradient
-          colors={Colors.gradientPhotoFade as [string, string]}
-          style={styles.imageFade}
-        />
-        <View style={styles.imageTextOverlay}>
-          <Text style={styles.brandYear}>{vehicle.marca.charAt(0) + vehicle.marca.slice(1).toLowerCase()} · {vehicle.ano}</Text>
-          <Text style={styles.name}>{vehicle.versao}</Text>
-        </View>
+      <View style={styles.iconArea}>
+        <MaterialCommunityIcons name="car-side" size={32} color={Colors.action} />
       </View>
 
-      <View style={styles.seeMoreRow}>
-        <Text style={styles.seeMoreLabel}>Veja mais</Text>
-        <Feather name="chevron-right" size={14} color={Colors.accent} />
+      <View style={styles.info}>
+        <Text style={styles.brand}>{vehicle.marca.toUpperCase()}</Text>
+        <Text style={styles.name} numberOfLines={2}>{vehicle.modelo}</Text>
+        <Text style={styles.price}>{fipe.price || 'Preço FIPE indisponível'}</Text>
       </View>
+
+      <Feather name="chevron-right" size={18} color={Colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     borderRadius: Colors.radiusLg,
-    overflow: 'hidden',
+    padding: 14,
   },
-  imageArea: {
-    height: 160,
-    backgroundColor: Colors.surface,
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
+  iconArea: {
+    width: 56,
+    height: 56,
+    borderRadius: Colors.radiusMd,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  imageFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '70%',
+  info: {
+    flex: 1,
+    gap: 2,
   },
-  imageTextOverlay: {
-    position: 'absolute',
-    left: 14,
-    bottom: 12,
-    right: 14,
+  brand: {
+    color: Colors.accent,
+    fontSize: 11,
+    fontFamily: 'Sora_600SemiBold',
+    letterSpacing: 0.5,
   },
-  brandYear: {
+  name: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Sora_700Bold',
+    lineHeight: 19,
+  },
+  price: {
     color: Colors.textSecondary,
     fontSize: 12,
     fontFamily: 'Sora_400Regular',
-  },
-  name: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-  seeMoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 14,
-  },
-  seeMoreLabel: {
-    color: Colors.accent,
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
+    marginTop: 2,
   },
 });

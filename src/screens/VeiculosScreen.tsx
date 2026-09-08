@@ -1,4 +1,4 @@
-/** Tela de busca e listagem de veículos */
+/** Tela de busca e listagem de veículos — marca e modelo reais da FIPE */
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,25 +15,9 @@ import { VeiculoResultCard } from '../components/veiculos/VeiculoResultCard';
 import { FilterSheet, FilterState, EMPTY_FILTERS } from '../components/veiculos/FilterFlow';
 import { VeiculoFicha } from '../components/veiculos/VeiculoFicha';
 import { Colors } from '../theme/colors';
-import { vehicles, featuredVehicle } from '../mock/veiculos';
+import { getFipeBrands, getFipeModels, buildVehicleFromFipe, cacheVehicles, getCachedVehicle } from '../services/fipeApi';
 import { Vehicle } from '../types/vehicle';
 import { useNavigation } from '../context/NavigationContext';
-
-const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
-
-function applyFilters(search: string, filters: FilterState): Vehicle[] {
-  return ALL_VEHICLES.filter((v) => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      if (!v.versao.toLowerCase().includes(q) && !v.marca.toLowerCase().includes(q)) return false;
-    }
-    if (filters.brands.length && !filters.brands.includes(v.marca)) return false;
-    if (filters.models.length && !filters.models.includes(v.modelo)) return false;
-    if (filters.categories.length && !filters.categories.includes(v.categoria)) return false;
-    if (filters.years.length && !filters.years.includes(v.ano)) return false;
-    return true;
-  });
-}
 
 export function VeiculosScreen() {
   const { openSidebar, pendingVehicleId, clearPendingVehicle } = useNavigation();
@@ -40,19 +25,72 @@ export function VeiculosScreen() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [search, setSearch] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<Vehicle[]>([]);
 
   useEffect(() => {
     if (pendingVehicleId) {
-      const vehicle = ALL_VEHICLES.find((v) => v.id === pendingVehicleId) ?? null;
+      const vehicle = getCachedVehicle(pendingVehicleId) ?? null;
       setSelectedVehicle(vehicle);
       clearPendingVehicle();
     }
   }, [pendingVehicleId]);
 
   const hasSearch = search.trim().length > 0;
-  const hasFilters = Object.values(appliedFilters).some((arr) => arr.length > 0);
+  const hasFilters = appliedFilters.brands.length > 0;
   const showResults = hasSearch || hasFilters;
-  const results = showResults ? applyFilters(search, appliedFilters) : [];
+
+  // Busca os modelos reais da marca selecionada no filtro (ou faz busca livre por texto).
+  useEffect(() => {
+    if (!showResults) {
+      setResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      const brands = await getFipeBrands();
+      if (!brands) {
+        if (!cancelled) {
+          setResults([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const q = search.trim().toLowerCase();
+      const matchingBrands = hasFilters
+        ? brands.filter((b) => appliedFilters.brands.includes(b.nome))
+        : brands.filter((b) => b.nome.toLowerCase().includes(q));
+
+      // Sem marca aplicada e busca muito genérica: evita disparar dezenas de
+      // requisições de uma vez (cada marca = 1 chamada de modelos).
+      const brandsToQuery = matchingBrands.slice(0, 6);
+
+      const vehicleLists = await Promise.all(
+        brandsToQuery.map(async (brand) => {
+          const models = await getFipeModels(brand.valor);
+          if (!models) return [];
+          const filteredModels = hasFilters
+            ? models
+            : models.filter((m) => m.modelo.toLowerCase().includes(q));
+          return filteredModels.slice(0, 30).map((m) => buildVehicleFromFipe(brand, m));
+        }),
+      );
+
+      if (cancelled) return;
+      const flat = vehicleLists.flat();
+      cacheVehicles(flat);
+      setResults(flat);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search, appliedFilters]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -60,7 +98,7 @@ export function VeiculosScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Veículos</Text>
-          <Text style={styles.headerSubtitle}>Pesquise ou filtre</Text>
+          <Text style={styles.headerSubtitle}>Marca e modelo reais da FIPE</Text>
         </View>
         <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
           <Feather name="menu" size={18} color={Colors.textPrimary} />
@@ -73,7 +111,7 @@ export function VeiculosScreen() {
           <Feather name="search" size={16} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Pesquisar por marca, modelo..."
+            placeholder="Pesquisar por marca ou modelo..."
             placeholderTextColor={Colors.textHint}
             value={search}
             onChangeText={setSearch}
@@ -99,7 +137,12 @@ export function VeiculosScreen() {
       >
         {showResults ? (
           <View style={styles.resultsList}>
-            {results.length === 0 ? (
+            {loading ? (
+              <View style={styles.loadingState}>
+                <ActivityIndicator color={Colors.accent} />
+                <Text style={styles.loadingText}>Buscando na tabela FIPE...</Text>
+              </View>
+            ) : results.length === 0 ? (
               <View style={styles.emptyResults}>
                 <Text style={styles.emptyTitle}>Nenhum veículo encontrado</Text>
                 <Text style={styles.emptySubtitle}>Tente ajustar os filtros ou a busca</Text>
@@ -122,7 +165,7 @@ export function VeiculosScreen() {
             </View>
             <Text style={styles.emptyStateTitle}>Comece sua busca</Text>
             <Text style={styles.emptyStateText}>
-              Use a lupa para pesquisar por nome ou{'\n'}abra o filtro para encontrar o carro ideal.
+              Use a lupa para pesquisar por nome ou{'\n'}abra o filtro para escolher a marca.
             </Text>
           </View>
         )}
@@ -232,6 +275,16 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     gap: 20,
     paddingBottom: 40,
+  },
+  loadingState: {
+    alignItems: 'center',
+    paddingTop: 60,
+    gap: 12,
+  },
+  loadingText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontFamily: 'Sora_400Regular',
   },
   emptyResults: {
     alignItems: 'center',
