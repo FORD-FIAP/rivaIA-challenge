@@ -1,31 +1,31 @@
 /** Tokens de cor do design system RIVA */
 export const Colors = {
   // Superfícies
-  bg:        '#1E1A1B',
-  surface:   '#0F1418',
-  surface2:  '#0F1418',
-  inputBg:   '#0D2A42',
+  bg:        '#201C1D',
+  surface:   '#2C2627',
+  surface2:  '#3A3132',
+  inputBg:   '#2C2627',
+  sidebarBg: '#121212',
 
-  // Marca & ação
-  primary:   '#0F4571',
-  midBlue:   '#386DBD',
+  // Marca & ação — ciano só em dado ou ação, nunca decoração
   action:    '#009DDD',
   accent:    '#05D3F8',
 
   // Texto
-  textPrimary:   '#E8F4FC',
-  textSecondary: '#7BB8D8',
-  textMuted:     '#6E8FA8',
-  textHint:      '#3D6080',
+  textPrimary:   '#FFFFFF',
+  textSecondary: '#A79D9F',
+  textValue:     '#D0DCE4',
+  textMuted:     '#8C8285',
+  textHint:      'rgba(140,130,133,0.55)',
 
   // Bordas
-  border:        'rgba(56,109,189,0.18)',
-  borderStrong:  'rgba(56,109,189,0.35)',
-  hover:         'rgba(15,69,113,0.35)',
-  selected:      'rgba(0,157,221,0.18)',
+  border:        'rgba(255,255,255,0.09)',
+  borderStrong:  'rgba(255,255,255,0.16)',
+  hover:         'rgba(255,255,255,0.06)',
 
-  // Sombra / glow
-  shadowGlow: '0 0 0 1px rgba(5,211,248,0.18), 0 8px 32px rgba(0,157,221,0.12)',
+  // Gradientes
+  gradientAction:    ['#009DDD', '#05D3F8'],
+  gradientPhotoFade: ['rgba(32,28,29,0)', '#201C1D'],
 
   // Border radius
   radiusSm:   6,

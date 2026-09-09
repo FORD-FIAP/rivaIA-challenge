@@ -161,7 +161,6 @@ export function ProfileScreen() {
             return (
               <View key={item.key} style={styles.disabledWrapper}>
                 <Pressable
-                  // @ts-expect-error Pressable.onHoverIn/Out existem em RN-web
                   onHoverIn={() => setHovered(item.key)}
                   onHoverOut={() => setHovered((h) => (h === item.key ? null : h))}
                   // No nativo (sem hover), o toque também revela a mensagem.
@@ -308,7 +307,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: Colors.action,
-    borderRadius: Colors.radiusMd,
+    borderRadius: Colors.radiusPill,
     paddingVertical: 14,
     marginBottom: 24,
   },
@@ -360,7 +359,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -30,
     alignSelf: 'center',
-    backgroundColor: '#0B1116',
+    backgroundColor: Colors.surface2,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     borderRadius: Colors.radiusSm,

@@ -18,7 +18,7 @@ Um visual tanto para um possível comprador quanto a um consultor que deseja exp
 | Fontes | Sora (Google Fonts via Expo) |
 | Ícones | Expo Vector Icons (Feather + MaterialCommunity) |
 | Gráficos | React Native SVG (radar chart customizado) |
-| Persistência | AsyncStorage (mobile) / localStorage (web) |
+| Persistência | AsyncStorage |
 | Estado Global | React Context API |
 | Web | React Native Web com frame de dispositivo |
 

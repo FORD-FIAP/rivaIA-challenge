@@ -1,10 +1,12 @@
 /**
- * ChatContext — gerencia o estado do chat mockado da Home.
+ * ChatContext — gerencia o estado do chat da Home.
  *
- * - Mantém a lista de mensagens visíveis (subset do `rivaScript`).
- * - A cada envio do usuário, descarta o texto digitado e avança para o
- *   próximo turno roteirizado (mensagem do usuário + resposta da RIVA).
- * - Persiste o histórico em AsyncStorage.
+ * A resposta vem do backend (função serverless em `/api/chat`, proxy pro
+ * Gemini Flash) via `sendChatMessage`. Enquanto o backend não estiver
+ * deployado (ou se a chamada falhar), cai automaticamente na mensagem de
+ * placeholder — nunca quebra a conversa. Persiste o histórico em
+ * AsyncStorage e arquiva a conversa em ConversasRecentesContext para
+ * aparecer na Sidebar.
  */
 import React, {
   createContext,
@@ -15,55 +17,40 @@ import React, {
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  rivaScript,
-  rivaScenarios,
-  endOfScriptReply,
-  ScriptedMessage,
-  RivaMessage,
-} from '../mock/rivaChat';
+import { useAuth } from './AuthContext';
+import { useConversasRecentesContext } from './ConversasRecentesContext';
+import { ChatMessage } from '../hooks/useConversasRecentes';
+import { sendChatMessage } from '../services/rivaChatApi';
 
-const DEFAULT_SCENARIO_ID = rivaScenarios[0].id;
-
-function getScenarioMessages(id: string): ScriptedMessage[] {
-  return rivaScenarios.find((s) => s.id === id)?.messages ?? rivaScript;
-}
+export type { ChatMessage };
 
 const STORAGE_KEY = '@riva/chat-history';
-const TYPING_DELAY_MS = 2200;
-
-type ExtraMessage = RivaMessage & { id: string };
+const TYPING_DELAY_MS = 1200;
+const RESPOSTA_EM_CONSTRUCAO =
+  'A IA da RIVA ainda está em construção — em breve as respostas vão ser geradas de verdade por aqui.';
 
 type ChatState = {
-  messages: ScriptedMessage[];
-  cursor: number;
+  messages: ChatMessage[];
   favorited: boolean;
-  scenarioId: string;
 };
 
 interface ChatContextValue {
-  messages: ScriptedMessage[];
-  cursor: number;
-  scenarioId: string;
+  messages: ChatMessage[];
   hasConversation: boolean;
   isTyping: boolean;
   isFavorited: boolean;
-  sendMessage: () => void;
+  sendMessage: (text: string) => void;
   resetChat: () => void;
   toggleFavorite: () => void;
-  loadConversation: (snapshot: { messages: ScriptedMessage[]; cursor: number; favorited: boolean; scenarioId?: string }) => void;
-  startScenario: (id: string) => void;
+  loadConversation: (snapshot: { messages: ChatMessage[]; favorited: boolean }) => void;
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ChatState>({
-    messages: [],
-    cursor: 0,
-    favorited: false,
-    scenarioId: DEFAULT_SCENARIO_ID,
-  });
+  const { isAuthenticated } = useAuth();
+  const { arquivar } = useConversasRecentesContext();
+  const [state, setState] = useState<ChatState>({ messages: [], favorited: false });
   const [isTyping, setIsTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -74,13 +61,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as ChatState;
-          if (parsed && Array.isArray(parsed.messages) && typeof parsed.cursor === 'number') {
-            setState({
-              messages: parsed.messages,
-              cursor: parsed.cursor,
-              favorited: !!parsed.favorited,
-              scenarioId: typeof parsed.scenarioId === 'string' ? parsed.scenarioId : DEFAULT_SCENARIO_ID,
-            });
+          if (parsed && Array.isArray(parsed.messages)) {
+            setState({ messages: parsed.messages, favorited: !!parsed.favorited });
           }
         }
       } catch {
@@ -97,74 +79,42 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
   }, [state, hydrated]);
 
-  const sendMessage = useCallback(() => {
-    setState((prev) => {
-      const script = getScenarioMessages(prev.scenarioId);
-      const next = script[prev.cursor];
-      if (!next) {
-        // Roteiro acabou: gera um turno genérico de usuário + resposta fim-de-script.
-        const fallbackUser: ScriptedMessage = {
-          id: `user-extra-${prev.messages.length}`,
-          role: 'user',
-          text: '...',
-        };
-        const fallbackRiva: ScriptedMessage = {
-          ...(endOfScriptReply as ExtraMessage),
-          id: `riva-extra-${prev.messages.length}`,
-        };
-        // Mostra a do usuário imediatamente; a da RIVA entra depois do typing.
-        setIsTyping(true);
-        setTimeout(() => {
-          setState((s) => ({ ...s, messages: [...s.messages, fallbackRiva] }));
-          setIsTyping(false);
-        }, TYPING_DELAY_MS);
-        return { ...prev, messages: [...prev.messages, fallbackUser] };
-      }
-
-      if (next.role === 'user') {
-        const userMsg = next;
-        const reply = script[prev.cursor + 1];
-        setIsTyping(true);
-        if (reply && reply.role === 'riva') {
-          setTimeout(() => {
-            setState((s) => ({
-              ...s,
-              messages: [...s.messages, reply],
-              cursor: prev.cursor + 2,
-            }));
-            setIsTyping(false);
-          }, TYPING_DELAY_MS);
-          return { ...prev, messages: [...prev.messages, userMsg] };
-        }
-        // Só tem usuário, sem resposta seguinte — avança 1.
-        setIsTyping(false);
-        return { ...prev, messages: [...prev.messages, userMsg], cursor: prev.cursor + 1 };
-      }
-
-      // Próxima é da RIVA isolada (não deveria acontecer no roteiro atual).
-      setIsTyping(true);
-      setTimeout(() => {
-        setState((s) => ({
-          ...s,
-          messages: [...s.messages, next],
-          cursor: prev.cursor + 1,
-        }));
-        setIsTyping(false);
-      }, TYPING_DELAY_MS);
-      return prev;
+  // Arquiva a conversa em andamento pra aparecer em "Recentes" na Sidebar.
+  useEffect(() => {
+    if (!isAuthenticated || state.messages.length === 0) return;
+    const primeiraMsgUsuario = state.messages.find((m) => m.role === 'user');
+    if (!primeiraMsgUsuario) return;
+    arquivar({
+      titulo: primeiraMsgUsuario.text,
+      messages: state.messages,
+      favorited: state.favorited,
     });
-  }, []);
+  }, [state.messages, state.favorited, isAuthenticated]);
+
+  const sendMessage = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed };
+    const historySnapshot = [...state.messages, userMsg];
+    setState((prev) => ({ ...prev, messages: [...prev.messages, userMsg] }));
+    setIsTyping(true);
+
+    const minDelay = new Promise<void>((resolve) => setTimeout(resolve, TYPING_DELAY_MS));
+
+    Promise.all([sendChatMessage(trimmed, historySnapshot), minDelay]).then(([reply]) => {
+      const rivaMsg: ChatMessage = {
+        id: `riva-${Date.now()}`,
+        role: 'riva',
+        text: reply ?? RESPOSTA_EM_CONSTRUCAO,
+      };
+      setState((prev) => ({ ...prev, messages: [...prev.messages, rivaMsg] }));
+      setIsTyping(false);
+    });
+  }, [state.messages]);
 
   const resetChat = useCallback(() => {
     setIsTyping(false);
-    setState({ messages: [], cursor: 0, favorited: false, scenarioId: DEFAULT_SCENARIO_ID });
-  }, []);
-
-  const startScenario = useCallback((id: string) => {
-    setIsTyping(false);
-    setState({ messages: [], cursor: 0, favorited: false, scenarioId: id });
-    // Dispara o 1º turno do roteiro escolhido no próximo tick (depois do reset).
-    setTimeout(() => sendMessage(), 0);
+    setState({ messages: [], favorited: false });
   }, []);
 
   const toggleFavorite = useCallback(() => {
@@ -172,14 +122,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadConversation = useCallback(
-    (snapshot: { messages: ScriptedMessage[]; cursor: number; favorited: boolean; scenarioId?: string }) => {
+    (snapshot: { messages: ChatMessage[]; favorited: boolean }) => {
       setIsTyping(false);
-      setState({
-        messages: snapshot.messages,
-        cursor: snapshot.cursor,
-        favorited: snapshot.favorited,
-        scenarioId: snapshot.scenarioId ?? DEFAULT_SCENARIO_ID,
-      });
+      setState({ messages: snapshot.messages, favorited: snapshot.favorited });
     },
     [],
   );
@@ -187,8 +132,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<ChatContextValue>(
     () => ({
       messages: state.messages,
-      cursor: state.cursor,
-      scenarioId: state.scenarioId,
       hasConversation: state.messages.length > 0,
       isTyping,
       isFavorited: state.favorited,
@@ -196,9 +139,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       resetChat,
       toggleFavorite,
       loadConversation,
-      startScenario,
     }),
-    [state.messages, state.cursor, state.scenarioId, state.favorited, isTyping, sendMessage, resetChat, toggleFavorite, loadConversation, startScenario],
+    [state.messages, state.favorited, isTyping, sendMessage, resetChat, toggleFavorite, loadConversation],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

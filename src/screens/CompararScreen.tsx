@@ -1,4 +1,4 @@
-/** Tela de comparação de veículos */
+/** Tela de comparação de veículos — até 4 modelos, marca/modelo/preço reais da FIPE */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -8,6 +8,7 @@ import {
   FlatList,
   ScrollView,
   Animated,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,84 +17,61 @@ import { Colors } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import { useFavoritesContext } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
-import { vehicles, featuredVehicle } from '../mock/veiculos';
-import { Vehicle, VehicleScores } from '../types/vehicle';
-import { RadarChart } from '../components/comparar/RadarChart';
+import { getFipeBrands, getFipeModels, buildVehicleFromFipe, cacheVehicles, getCachedVehicle, FipeBrand } from '../services/fipeApi';
+import { useFipePrice } from '../hooks/useFipePrice';
+import { Vehicle } from '../types/vehicle';
+import { FilterSheetHeader, FilterClearLabel, FilterChipRow, FilterChip } from '../components/shared/FilterChips';
 
-const ALL_VEHICLES: Vehicle[] = [featuredVehicle, ...vehicles];
-
-const COLOR_A = Colors.accent;       // ciano
-const COLOR_B = '#7B6FE8';           // roxo suave
-
-const SCORE_KEYS: (keyof VehicleScores)[] = [
-  'performance',
-  'conforto',
-  'economia',
-  'offRoad',
-  'tecnologia',
-  'seguranca',
-];
-
-const SCORE_LABELS: Record<keyof VehicleScores, string> = {
-  performance: 'Performance',
-  conforto: 'Conforto',
-  economia: 'Economia',
-  offRoad: 'Off-road',
-  tecnologia: 'Tecnologia',
-  seguranca: 'Segurança',
-};
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function getScoreValues(v: Vehicle): number[] {
-  const s = v.scores;
-  return SCORE_KEYS.map((k) => (s ? (s[k] as number | undefined) ?? 0 : 0));
-}
-
-function totalScore(v: Vehicle) {
-  return getScoreValues(v).reduce((a, b) => a + b, 0);
-}
-
-function topEntries(v: Vehicle, n: number, highest: boolean) {
-  const s = v.scores;
-  return SCORE_KEYS.map((k) => ({ key: k, value: s ? (s[k] as number | undefined) ?? 0 : 0 }))
-    .sort((a, b) => (highest ? b.value - a.value : a.value - b.value))
-    .slice(0, n);
-}
+const MAX_SLOTS = 4;
+const SLOT_COLORS = [Colors.accent, '#7B6FE8', '#FF9F45', '#F472B6'];
 
 // ─── Tela principal ──────────────────────────────────────────────────────────
 
 export function CompararScreen() {
-  const { openSidebar, pendingComparisonIds, clearPendingComparison } = useNavigation();
+  const {
+    openSidebar,
+    pendingComparisonIds,
+    clearPendingComparison,
+    pendingCompareVehicleId,
+    clearPendingCompareVehicle,
+  } = useNavigation();
   const { isComparisonFavorite, toggleComparison } = useFavoritesContext();
   const { isAuthenticated, requestLogin } = useAuth();
-  const { width } = useWindowDimensions();
-  const [slots, setSlots] = useState<[Vehicle | null, Vehicle | null]>([null, null]);
-  const [pickingSlot, setPickingSlot] = useState<0 | 1 | null>(null);
-  const [motorOpen, setMotorOpen] = useState(true);
-  const [carroceriaOpen, setCarroceriaOpen] = useState(true);
-  const [offRoadOpen, setOffRoadOpen] = useState(true);
+  const [slots, setSlots] = useState<(Vehicle | null)[]>([null, null]);
+  const [pickingSlot, setPickingSlot] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
-  const bothSelected = slots[0] !== null && slots[1] !== null;
+  const filledVehicles = slots.filter((v): v is Vehicle => v !== null);
+  const comparisonReady = filledVehicles.length >= 2;
 
   useEffect(() => {
-    if (bothSelected) {
-      setTimeout(() => scrollRef.current?.scrollTo({ y: 260, animated: true }), 100);
+    if (comparisonReady) {
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 280, animated: true }), 100);
     }
-  }, [bothSelected]);
+  }, [comparisonReady]);
 
   useEffect(() => {
     if (pendingComparisonIds) {
       const [idA, idB] = pendingComparisonIds;
-      const a = ALL_VEHICLES.find((v) => v.id === idA) ?? null;
-      const b = ALL_VEHICLES.find((v) => v.id === idB) ?? null;
+      const a = getCachedVehicle(idA) ?? null;
+      const b = getCachedVehicle(idB) ?? null;
       if (a && b) setSlots([a, b]);
       clearPendingComparison();
     }
   }, [pendingComparisonIds]);
 
-  function openPicker(index: 0 | 1) {
+  useEffect(() => {
+    if (pendingCompareVehicleId) {
+      const vehicle = getCachedVehicle(pendingCompareVehicleId) ?? null;
+      if (vehicle) {
+        setSlots([vehicle, null]);
+        setPickingSlot(1);
+      }
+      clearPendingCompareVehicle();
+    }
+  }, [pendingCompareVehicleId]);
+
+  function openPicker(index: number) {
     setPickingSlot(index);
   }
 
@@ -101,35 +79,38 @@ export function CompararScreen() {
     if (pickingSlot === null) return;
     const slotIndex = pickingSlot;
     setSlots((prev) => {
-      const next: [Vehicle | null, Vehicle | null] = [...prev] as [Vehicle | null, Vehicle | null];
+      const next = [...prev];
       next[slotIndex] = vehicle;
       return next;
     });
     setPickingSlot(null);
   }
 
-  function removeVehicle(index: 0 | 1) {
+  function removeVehicle(index: number) {
     setSlots((prev) => {
-      const next: [Vehicle | null, Vehicle | null] = [...prev] as [Vehicle | null, Vehicle | null];
+      const next = [...prev];
       next[index] = null;
       return next;
     });
   }
 
-  const vA = slots[0]!;
-  const vB = slots[1]!;
-  const comparisonSaved = bothSelected && isAuthenticated && isComparisonFavorite(vA.id, vB.id);
-
-  function toggleSavedComparison() {
-    if (!bothSelected) return;
-    toggleComparison(vA.id, vB.id);
+  function addSlot() {
+    setSlots((prev) => (prev.length < MAX_SLOTS ? [...prev, null] : prev));
   }
 
-  const winner = bothSelected
-    ? totalScore(vA) >= totalScore(vB)
-      ? vA
-      : vB
-    : null;
+  function removeEmptySlot(index: number) {
+    setSlots((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // O "salvar comparação" (estrela) só existe pra pares — a API de favoritos é 1x1.
+  const canSaveComparison = filledVehicles.length === 2;
+  const comparisonSaved =
+    canSaveComparison && isAuthenticated && isComparisonFavorite(filledVehicles[0].id, filledVehicles[1].id);
+
+  function toggleSavedComparison() {
+    if (!canSaveComparison) return;
+    toggleComparison(filledVehicles[0].id, filledVehicles[1].id);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -137,10 +118,10 @@ export function CompararScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Comparar</Text>
-          <Text style={styles.headerSubtitle}>Escolha até 2 modelos</Text>
+          <Text style={styles.headerSubtitle}>Escolha até {MAX_SLOTS} modelos</Text>
         </View>
         <View style={styles.headerActions}>
-          {bothSelected && (
+          {canSaveComparison && (
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => {
@@ -148,8 +129,8 @@ export function CompararScreen() {
                   toggleSavedComparison();
                 } else {
                   requestLogin(
-                    { type: 'comparison', vehicleA: vA, vehicleB: vB },
-                    () => toggleComparison(vA.id, vB.id),
+                    { type: 'comparison', vehicleA: filledVehicles[0], vehicleB: filledVehicles[1] },
+                    () => toggleComparison(filledVehicles[0].id, filledVehicles[1].id),
                   );
                 }
               }}
@@ -168,247 +149,57 @@ export function CompararScreen() {
       </View>
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Slots */}
-        <View style={styles.slots}>
-          {([0, 1] as const).map((i) =>
-            slots[i] ? (
+        {/* Slots — rolagem horizontal pra caber até 4 */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.slots}
+        >
+          {slots.map((vehicle, i) =>
+            vehicle ? (
               <FilledSlot
                 key={i}
-                vehicle={slots[i]!}
-                color={i === 0 ? COLOR_A : COLOR_B}
+                vehicle={vehicle}
+                color={SLOT_COLORS[i % SLOT_COLORS.length]}
                 onSwap={() => openPicker(i)}
                 onRemove={() => removeVehicle(i)}
               />
             ) : (
-              <EmptySlot key={i} onPress={() => openPicker(i)} />
+              <EmptySlot
+                key={i}
+                onPress={() => openPicker(i)}
+                onRemove={i >= 2 ? () => removeEmptySlot(i) : undefined}
+              />
             ),
           )}
-        </View>
+          {slots.length < MAX_SLOTS && (
+            <TouchableOpacity style={styles.addSlot} activeOpacity={0.7} onPress={addSlot}>
+              <Feather name="plus-circle" size={22} color={Colors.textMuted} />
+              <Text style={styles.addSlotLabel}>Adicionar</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
 
-        {/* ── Seções de comparação (só quando ambos selecionados) ── */}
-        {bothSelected && (
-          <>
-            {/* Radar */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="trophy-outline" size={16} color={Colors.accent} />
-                <Text style={styles.sectionTitle}>Pontuação por categoria</Text>
-              </View>
-              <View style={styles.radarWrapper}>
-                <RadarChart
-                  valuesA={getScoreValues(vA)}
-                  valuesB={getScoreValues(vB)}
-                  colorA={COLOR_A}
-                  colorB={COLOR_B}
-                  labelA={vA.versao}
-                  labelB={vB.versao}
-                  size={Math.min(width - 80, 320)}
-                />
-              </View>
+        {/* ── Comparação (a partir de 2 selecionados) — só marca/modelo/preço, dados reais da FIPE ── */}
+        {comparisonReady && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="cash-multiple" size={16} color={Colors.accent} />
+              <Text style={styles.sectionTitle}>Identificação & Preço FIPE</Text>
             </View>
 
-            {/* Recomendação RIVA */}
-            <View style={styles.recoCard}>
-              <View style={styles.recoOrb} />
-              <View style={styles.recoBody}>
-                <Text style={styles.recoLabel}>RECOMENDAÇÃO RIVA</Text>
-                <Text style={styles.recoText}>
-                  O melhor encaixe é o{' '}
-                  <Text style={styles.recoHighlight}>{winner!.versao}</Text>.
-                </Text>
-                <Text style={styles.recoSub}>
-                  {winner === vA
-                    ? `${vB.versao} é a alternativa se priorizar off-road.`
-                    : `${vA.versao} é a alternativa se priorizar esportivo.`}
-                </Text>
-              </View>
+            {filledVehicles.map((v, i) => (
+              <PriceRow key={v.id} vehicle={v} color={SLOT_COLORS[i % SLOT_COLORS.length]} />
+            ))}
+
+            <View style={styles.noticeBox}>
+              <Feather name="info" size={14} color={Colors.textMuted} />
+              <Text style={styles.noticeText}>
+                Comparação por motor, dimensões, off-road e segurança ainda não está disponível —
+                depende de uma API específica pra ficha técnica, que ainda não integramos.
+              </Text>
             </View>
-
-            {/* Pontos fortes & fracos */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="lightning-bolt" size={16} color={Colors.accent} />
-                <Text style={styles.sectionTitle}>Pontos fortes & fracos</Text>
-              </View>
-              <View style={styles.strengthsRow}>
-                {([vA, vB] as Vehicle[]).map((v, vi) => (
-                  <View key={v.id} style={styles.strengthsCard}>
-                    <Text style={[styles.strengthsBrand, { color: vi === 0 ? COLOR_A : COLOR_B }]}>
-                      {v.marca}
-                    </Text>
-                    <Text style={styles.strengthsName} numberOfLines={2}>{v.versao}</Text>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.pointsGroup}>
-                      <View style={styles.pointsLabelRow}>
-                        <MaterialCommunityIcons name="thumb-up-outline" size={11} color="#4ADE80" />
-                        <Text style={[styles.pointsGroupLabel, { color: '#4ADE80' }]}>PONTOS FORTES</Text>
-                      </View>
-                      {topEntries(v, 2, true).map(({ key, value }) => (
-                        <View key={key} style={styles.pointRow}>
-                          <Text style={styles.pointName}>{SCORE_LABELS[key]}</Text>
-                          <Text style={[styles.pointValue, { color: '#4ADE80' }]}>{value.toFixed(1)}</Text>
-                        </View>
-                      ))}
-                    </View>
-
-                    <View style={styles.pointsGroup}>
-                      <View style={styles.pointsLabelRow}>
-                        <MaterialCommunityIcons name="thumb-down-outline" size={11} color="#F97316" />
-                        <Text style={[styles.pointsGroupLabel, { color: '#F97316' }]}>PONTOS FRACOS</Text>
-                      </View>
-                      {topEntries(v, 2, false).map(({ key, value }) => (
-                        <View key={key} style={styles.pointRow}>
-                          <Text style={styles.pointName}>{SCORE_LABELS[key]}</Text>
-                          <Text style={[styles.pointValue, { color: '#F97316' }]}>{value.toFixed(1)}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Motor & Desempenho */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setMotorOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="engine-outline" size={16} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Motor & Desempenho</Text>
-                <Feather
-                  name={motorOpen ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={Colors.textMuted}
-                />
-              </TouchableOpacity>
-
-              {motorOpen && (
-                <View style={styles.table}>
-                  {/* Cabeçalho */}
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>
-                      ATRIBUTO
-                    </Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>
-                      {vA.marca}
-                    </Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>
-                      {vB.marca}
-                    </Text>
-                  </View>
-
-                  {/* Versão */}
-                  <TableRow
-                    label=""
-                    valA={vA.versao}
-                    valB={vB.versao}
-                    colorA={COLOR_A}
-                    colorB={COLOR_B}
-                    highlight={false}
-                  />
-
-                  {/* Linhas numéricas com destaque */}
-                  <TableRowNum label="Motor" strA={vA.motorizacao_desempenho?.motor} strB={vB.motorizacao_desempenho?.motor} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Potência" strA={`${vA.motorizacao_desempenho?.potencia} cv`} strB={`${vB.motorizacao_desempenho?.potencia} cv`} numA={Number(vA.motorizacao_desempenho?.potencia)} numB={Number(vB.motorizacao_desempenho?.potencia)} colorA={COLOR_A} colorB={COLOR_B} higherIsBetter />
-                  <TableRowNum label="Torque" strA={`${vA.motorizacao_desempenho?.torque} Nm`} strB={`${vB.motorizacao_desempenho?.torque} Nm`} numA={Number(vA.motorizacao_desempenho?.torque)} numB={Number(vB.motorizacao_desempenho?.torque)} colorA={COLOR_A} colorB={COLOR_B} higherIsBetter />
-                  <TableRowNum label="Combustível" strA={vA.motorizacao_desempenho?.combustivel} strB={vB.motorizacao_desempenho?.combustivel} colorA={COLOR_A} colorB={COLOR_B} />
-                </View>
-              )}
-            </View>
-
-            {/* Carroceria & Dimensões */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setCarroceriaOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <Feather name="edit-2" size={15} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Carroceria & Dimensões</Text>
-                <Feather name={carroceriaOpen ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              {carroceriaOpen && (
-                <View style={styles.table}>
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>ATRIBUTO</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>{vA.marca}</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>{vB.marca}</Text>
-                  </View>
-                  <TableRow label="" valA={vA.versao} valB={vB.versao} colorA={COLOR_A} colorB={COLOR_B} highlight={false} />
-                  <TableRowNum label="Carroceria" strA={vA.classificacao} strB={vB.classificacao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum
-                    label="Comprimento"
-                    strA={vA.dimensoes ? `${vA.dimensoes.comprimento} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.comprimento} mm` : undefined}
-                    numA={vA.dimensoes?.comprimento}
-                    numB={vB.dimensoes?.comprimento}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Largura"
-                    strA={vA.dimensoes ? `${vA.dimensoes.largura} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.largura} mm` : undefined}
-                    numA={vA.dimensoes?.largura}
-                    numB={vB.dimensoes?.largura}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Altura"
-                    strA={vA.dimensoes ? `${vA.dimensoes.altura} mm` : undefined}
-                    strB={vB.dimensoes ? `${vB.dimensoes.altura} mm` : undefined}
-                    numA={vA.dimensoes?.altura}
-                    numB={vB.dimensoes?.altura}
-                    colorA={COLOR_A} colorB={COLOR_B} higherIsBetter
-                  />
-                  <TableRowNum
-                    label="Cap. Carga"
-                    strA={vA.capacidade?.capacidade_reboque}
-                    strB={vB.capacidade?.capacidade_reboque}
-                    colorA={COLOR_A} colorB={COLOR_B}
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Off-Road & Tração */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setOffRoadOpen((o) => !o)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="terrain" size={16} color={Colors.accent} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Off-Road & Tração</Text>
-                <Feather name={offRoadOpen ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              {offRoadOpen && (
-                <View style={styles.table}>
-                  <View style={[styles.tableRow, styles.tableHead]}>
-                    <Text style={[styles.tableCell, styles.tableCellAttr, styles.tableHeadText]}>ATRIBUTO</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_A }]}>{vA.marca}</Text>
-                    <Text style={[styles.tableCell, styles.tableHeadText, { color: COLOR_B }]}>{vB.marca}</Text>
-                  </View>
-                  <TableRow label="" valA={vA.versao} valB={vB.versao} colorA={COLOR_A} colorB={COLOR_B} highlight={false} />
-                  <TableRowNum label="Amortecedor" strA={vA.off_road?.suspensao} strB={vB.off_road?.suspensao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Sistema AWD" strA={vA.off_road?.modos_tracao} strB={vB.off_road?.modos_tracao} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum label="Dif. Traseiro" strA={vA.off_road?.diferencial_traseiro_bloqueavel} strB={vB.off_road?.diferencial_traseiro_bloqueavel} colorA={COLOR_A} colorB={COLOR_B} />
-                  <TableRowNum
-                    label="Alt. Mín. Solo"
-                    strA={vA.dimensoes?.vao_livre}
-                    strB={vB.dimensoes?.vao_livre}
-                    colorA={COLOR_A} colorB={COLOR_B}
-                  />
-                  <TableRowNum label="Controle Descida" strA={vA.off_road?.controle_descida} strB={vB.off_road?.controle_descida} colorA={COLOR_A} colorB={COLOR_B} />
-                </View>
-              )}
-            </View>
-          </>
+          </View>
         )}
 
         <View style={{ height: 40 }} />
@@ -416,7 +207,7 @@ export function CompararScreen() {
 
       <VehiclePickerModal
         visible={pickingSlot !== null}
-        excluded={slots.filter(Boolean) as Vehicle[]}
+        excluded={filledVehicles}
         onSelect={selectVehicle}
         onClose={() => setPickingSlot(null)}
       />
@@ -424,15 +215,35 @@ export function CompararScreen() {
   );
 }
 
+// ─── Linha de preço por veículo (dado real da FIPE, com fallback) ────────────
+
+function PriceRow({ vehicle, color }: { vehicle: Vehicle; color: string }) {
+  const fipe = useFipePrice(vehicle.fipeCode, vehicle.preco ?? '');
+  return (
+    <View style={styles.priceRow}>
+      <View style={[styles.priceDot, { backgroundColor: color }]} />
+      <View style={styles.priceInfo}>
+        <Text style={styles.priceBrand}>{vehicle.marca}</Text>
+        <Text style={styles.priceModel} numberOfLines={1}>{vehicle.modelo}</Text>
+      </View>
+      <Text style={styles.priceValue}>{fipe.price || 'Indisponível'}</Text>
+    </View>
+  );
+}
+
 // ─── Slot vazio ──────────────────────────────────────────────────────────────
 
-function EmptySlot({ onPress }: { onPress: () => void }) {
+function EmptySlot({ onPress, onRemove }: { onPress: () => void; onRemove?: () => void }) {
   return (
     <TouchableOpacity style={styles.slotEmpty} activeOpacity={0.7} onPress={onPress}>
+      {onRemove && (
+        <TouchableOpacity style={styles.removeEmptySlot} onPress={onRemove} hitSlop={8}>
+          <Feather name="x" size={14} color={Colors.textMuted} />
+        </TouchableOpacity>
+      )}
       <View style={styles.plusCircle}>
         <Feather name="plus" size={22} color={Colors.accent} />
       </View>
-      <Text style={styles.slotTitle}>Comparar Veículo</Text>
       <Text style={styles.slotSubtitle}>Clique para escolher</Text>
     </TouchableOpacity>
   );
@@ -451,20 +262,19 @@ function FilledSlot({
   onSwap: () => void;
   onRemove: () => void;
 }) {
+  const fipe = useFipePrice(vehicle.fipeCode, vehicle.preco ?? '');
+
   return (
     <View style={styles.slotFilled}>
       <View style={styles.imageArea}>
-        <Text style={[styles.brandBadge, { color }]}>{vehicle.marca.toUpperCase()}</Text>
-        <MaterialCommunityIcons name="truck" size={56} color={color} />
+        <MaterialCommunityIcons name="car-side" size={56} color={color} />
+        <Text style={[styles.brandBadgeOverlay, { color }]}>{vehicle.marca.toUpperCase()}</Text>
       </View>
 
       <View style={styles.filledInfo}>
         <Text style={[styles.filledBrand, { color }]}>{vehicle.marca.toUpperCase()}</Text>
-        <Text style={styles.filledName} numberOfLines={2}>{vehicle.versao}</Text>
-        <Text style={styles.filledEngine} numberOfLines={1}>
-          {vehicle.motorizacao_desempenho?.motor} · {vehicle.ano}
-        </Text>
-        <Text style={[styles.filledPrice, { color }]}>{vehicle.preco}</Text>
+        <Text style={styles.filledName} numberOfLines={2}>{vehicle.modelo}</Text>
+        <Text style={[styles.filledPrice, { color }]} numberOfLines={1}>{fipe.price || 'Indisponível'}</Text>
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={onSwap} activeOpacity={0.8}>
@@ -483,85 +293,7 @@ function FilledSlot({
   );
 }
 
-// ─── Linhas da tabela ─────────────────────────────────────────────────────────
-
-function TableRow({
-  label,
-  valA,
-  valB,
-  colorA,
-  colorB,
-  highlight = false,
-}: {
-  label: string;
-  valA?: string;
-  valB?: string;
-  colorA: string;
-  colorB: string;
-  highlight?: boolean;
-}) {
-  return (
-    <View style={styles.tableRow}>
-      {label ? <Text style={[styles.tableCell, styles.tableCellAttr]}>{label}</Text> : <View style={[styles.tableCell, styles.tableCellAttr]} />}
-      <Text style={[styles.tableCell, { color: highlight ? colorA : Colors.textSecondary }]}>{valA ?? '—'}</Text>
-      <Text style={[styles.tableCell, { color: highlight ? colorB : Colors.textSecondary }]}>{valB ?? '—'}</Text>
-    </View>
-  );
-}
-
-function TableRowNum({
-  label,
-  strA,
-  strB,
-  numA,
-  numB,
-  colorA,
-  colorB,
-  higherIsBetter,
-}: {
-  label: string;
-  strA?: string;
-  strB?: string;
-  numA?: number;
-  numB?: number;
-  colorA: string;
-  colorB: string;
-  higherIsBetter?: boolean;
-}) {
-  const canCompare = numA !== undefined && numB !== undefined && !isNaN(numA) && !isNaN(numB);
-  const aWins = canCompare && (higherIsBetter ? numA > numB : numA < numB);
-  const bWins = canCompare && (higherIsBetter ? numB > numA : numB < numA);
-
-  return (
-    <View style={styles.tableRow}>
-      <Text style={[styles.tableCell, styles.tableCellAttr]}>{label}</Text>
-      <View style={styles.tableCell}>
-        {aWins && (
-          <View style={[styles.betterBadge, { backgroundColor: `${colorA}22` }]}>
-            <MaterialCommunityIcons name="trophy-outline" size={9} color={colorA} />
-            <Text style={[styles.betterLabel, { color: colorA }]}>MELHOR</Text>
-          </View>
-        )}
-        <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
-          {strA ?? '—'}
-        </Text>
-      </View>
-      <View style={styles.tableCell}>
-        {bWins && (
-          <View style={[styles.betterBadge, { backgroundColor: `${colorB}22` }]}>
-            <MaterialCommunityIcons name="trophy-outline" size={9} color={colorB} />
-            <Text style={[styles.betterLabel, { color: colorB }]}>MELHOR</Text>
-          </View>
-        )}
-        <Text style={{ color: Colors.textSecondary, fontSize: 12, fontFamily: 'Sora_400Regular' }}>
-          {strB ?? '—'}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// ─── Modal de seleção ─────────────────────────────────────────────────────────
+// ─── Modal de seleção (busca real na FIPE) ───────────────────────────────────
 
 function VehiclePickerModal({
   visible,
@@ -578,204 +310,111 @@ function VehiclePickerModal({
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [brands, setBrands] = useState<FipeBrand[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<FipeBrand | null>(null);
+  const [models, setModels] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
-    slideAnim.setValue(screenHeight);
-    backdropAnim.setValue(0);
-    setSelectedBrands([]);
-    setSelectedCategories([]);
-    setSelectedModels([]);
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [visible, screenHeight]);
-
-  if (!visible) return null;
+    if (visible && brands.length === 0) {
+      getFipeBrands().then((result) => {
+        if (result) setBrands([...result].sort((a, b) => a.nome.localeCompare(b.nome)));
+      });
+    }
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: screenHeight, duration: 300, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start();
+      setSelectedBrand(null);
+      setModels([]);
+    }
+  }, [visible]);
 
   const excludedIds = new Set(excluded.map((v) => v.id));
 
-  // Chips: usam o catálogo COMPLETO (Ranger e similares devem aparecer mesmo quando
-  // a única versão disponível já está selecionada na comparação).
-  const allBrands = [...new Set(ALL_VEHICLES.map((v) => v.marca))];
-
-  const filteredByBrand = selectedBrands.length > 0
-    ? ALL_VEHICLES.filter((v) => selectedBrands.includes(v.marca))
-    : ALL_VEHICLES;
-  const availableCategories = [...new Set(filteredByBrand.map((v) => v.categoria))];
-
-  const filteredByBrandAndCategory = selectedCategories.length > 0
-    ? filteredByBrand.filter((v) => selectedCategories.includes(v.categoria))
-    : filteredByBrand;
-  const availableModels = [...new Set(filteredByBrandAndCategory.map((v) => v.modelo))];
-
-  const hasAnyFilter =
-    selectedBrands.length + selectedCategories.length + selectedModels.length > 0;
-
-  // Lista de carros só aparece quando algum filtro foi aplicado; sempre exclui o já comparado.
-  const available = hasAnyFilter
-    ? (selectedModels.length > 0
-        ? filteredByBrandAndCategory.filter((v) => selectedModels.includes(v.modelo))
-        : filteredByBrandAndCategory
-      ).filter((v) => !excludedIds.has(v.id))
-    : [];
-
-  function toggle<T>(list: T[], value: T): T[] {
-    return list.includes(value) ? list.filter((i) => i !== value) : [...list, value];
-  }
-
-  function toggleBrand(brand: string) {
-    const next = toggle(selectedBrands, brand);
-    const nextScope = next.length > 0 ? ALL_VEHICLES.filter((v) => next.includes(v.marca)) : ALL_VEHICLES;
-    setSelectedBrands(next);
-    setSelectedCategories((prev) => prev.filter((c) => nextScope.some((v) => v.categoria === c)));
-    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
-  }
-
-  function toggleCategory(cat: string) {
-    const next = toggle(selectedCategories, cat);
-    const nextScope = next.length > 0 ? filteredByBrand.filter((v) => next.includes(v.categoria)) : filteredByBrand;
-    setSelectedCategories(next);
-    setSelectedModels((prev) => prev.filter((m) => nextScope.some((v) => v.modelo === m)));
+  function selectBrand(brand: FipeBrand) {
+    setSelectedBrand(brand);
+    setLoading(true);
+    getFipeModels(brand.valor).then((result) => {
+      const vehiclesList = (result ?? []).map((m) => buildVehicleFromFipe(brand, m));
+      cacheVehicles(vehiclesList);
+      setModels(vehiclesList.filter((v) => !excludedIds.has(v.id)));
+      setLoading(false);
+    });
   }
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       <Animated.View style={[styles.modalBackdrop, { opacity: backdropAnim }]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
       </Animated.View>
 
       <Animated.View style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.handle} />
-        <View style={styles.modalTitleRow}>
-          <Text style={styles.modalTitle}>Escolher veículo</Text>
-          {hasAnyFilter && (
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedBrands([]);
-                setSelectedCategories([]);
-                setSelectedModels([]);
-              }}
-            >
-              <Text style={styles.clearFiltersLabel}>Limpar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <FilterSheetHeader
+          title="Escolher veículo"
+          onClose={onClose}
+          rightExtra={
+            selectedBrand ? <FilterClearLabel onPress={() => { setSelectedBrand(null); setModels([]); }} /> : undefined
+          }
+        />
 
         <View style={styles.filtersBlock}>
-          <PickerFilterRow label="MARCA">
-            {allBrands.map((brand) => (
-              <PickerChip
-                key={brand}
-                label={brand.charAt(0) + brand.slice(1).toLowerCase()}
-                active={selectedBrands.includes(brand)}
-                onPress={() => toggleBrand(brand)}
+          <FilterChipRow label="Marca">
+            {brands.map((brand) => (
+              <FilterChip
+                key={brand.valor}
+                label={brand.nome}
+                active={selectedBrand?.valor === brand.valor}
+                onPress={() => selectBrand(brand)}
               />
             ))}
-          </PickerFilterRow>
-
-          {selectedBrands.length > 0 && availableCategories.length > 0 && (
-            <PickerFilterRow label="CATEGORIA">
-              {availableCategories.map((cat) => (
-                <PickerChip
-                  key={cat}
-                  label={cat}
-                  active={selectedCategories.includes(cat)}
-                  onPress={() => toggleCategory(cat)}
-                />
-              ))}
-            </PickerFilterRow>
-          )}
-
-          {selectedCategories.length > 0 && availableModels.length > 0 && (
-            <PickerFilterRow label="MODELO">
-              {availableModels.map((model) => (
-                <PickerChip
-                  key={model}
-                  label={model}
-                  active={selectedModels.includes(model)}
-                  onPress={() => setSelectedModels((prev) => toggle(prev, model))}
-                />
-              ))}
-            </PickerFilterRow>
-          )}
+          </FilterChipRow>
         </View>
 
-        <FlatList
-          data={available}
-          keyExtractor={(v) => v.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          style={styles.list}
-          ListEmptyComponent={
-            <View style={styles.listEmpty}>
-              <Text style={styles.listEmptyText}>
-                {hasAnyFilter
-                  ? 'Nenhum veículo com esses filtros'
-                  : 'Selecione marca, categoria ou modelo para ver os carros'}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.listRow}
-              onPress={() => onSelect(item)}
-              activeOpacity={0.75}
-            >
-              <View style={styles.listThumb}>
-                <Text style={styles.listThumbLabel}>{item.marca.slice(0, 5).toUpperCase()}</Text>
-                <MaterialCommunityIcons name="truck" size={28} color={Colors.action} />
+        {loading ? (
+          <View style={styles.listEmpty}>
+            <ActivityIndicator color={Colors.accent} />
+          </View>
+        ) : (
+          <FlatList
+            data={models}
+            keyExtractor={(v) => v.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            style={styles.list}
+            ListEmptyComponent={
+              <View style={styles.listEmpty}>
+                <Text style={styles.listEmptyText}>
+                  {selectedBrand ? 'Nenhum modelo encontrado' : 'Selecione uma marca para ver os modelos'}
+                </Text>
               </View>
-              <View style={styles.listText}>
-                <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
-                <Text style={styles.listName}>{item.versao}</Text>
-                <Text style={styles.listPrice}>{item.preco}</Text>
-              </View>
-              <Feather name="plus" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        />
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.listRow}
+                onPress={() => onSelect(item)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.listThumb}>
+                  <MaterialCommunityIcons name="car-side" size={28} color={Colors.action} />
+                </View>
+                <View style={styles.listText}>
+                  <Text style={styles.listBrand}>{item.marca.toUpperCase()}</Text>
+                  <Text style={styles.listName} numberOfLines={2}>{item.modelo}</Text>
+                </View>
+                <Feather name="plus" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          />
+        )}
       </Animated.View>
     </View>
-  );
-}
-
-function PickerFilterRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.filterRow}>
-      <Text style={styles.filterRowLabel}>{label}</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterChipsScroll}
-      >
-        {children}
-      </ScrollView>
-    </View>
-  );
-}
-
-function PickerChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[styles.filterChip, active && styles.filterChipActive]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={[styles.filterChipLabel, active && styles.filterChipLabelActive]}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -789,12 +428,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
+    paddingTop: 28,
+    paddingBottom: 16,
+    minHeight: 82,
   },
   headerTitle: {
     color: Colors.textPrimary,
-    fontSize: 24,
+    fontSize: 30,
+    letterSpacing: -1,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
@@ -831,7 +472,7 @@ const styles = StyleSheet.create({
 
   // Slot vazio
   slotEmpty: {
-    flex: 1,
+    width: 160,
     backgroundColor: Colors.surface,
     borderRadius: Colors.radiusLg,
     borderWidth: 1.5,
@@ -841,21 +482,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
     gap: 12,
+    position: 'relative',
+  },
+  removeEmptySlot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   plusCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  slotTitle: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    textAlign: 'center',
   },
   slotSubtitle: {
     color: Colors.textMuted,
@@ -863,10 +503,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
     textAlign: 'center',
   },
+  addSlot: {
+    width: 90,
+    borderRadius: Colors.radiusLg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  addSlotLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontFamily: 'Sora_500Medium',
+  },
 
   // Slot preenchido
   slotFilled: {
-    flex: 1,
+    width: 160,
     backgroundColor: Colors.surface,
     borderRadius: Colors.radiusLg,
     borderWidth: 1,
@@ -890,17 +542,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,107,107,0.12)',
   },
   imageArea: {
-    backgroundColor: Colors.primary,
+    height: 100,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 4,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  brandBadge: {
+  brandBadgeOverlay: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
     letterSpacing: 1.5,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Colors.radiusPill,
+    overflow: 'hidden',
   },
   filledInfo: { padding: 10, gap: 3 },
   filledBrand: {
@@ -916,11 +577,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_700Bold',
     lineHeight: 18,
   },
-  filledEngine: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-  },
   filledPrice: {
     fontSize: 13,
     fontWeight: '700',
@@ -928,7 +584,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Seções
+  // Seção de comparação simples
   section: {
     marginHorizontal: 20,
     marginTop: 24,
@@ -950,172 +606,62 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
   },
-  radarWrapper: {
+  priceRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-
-  // Recomendação
-  recoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: Colors.radiusLg,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    padding: 14,
-  },
-  recoOrb: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.action,
-    shadowColor: Colors.action,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
-    flexShrink: 0,
-  },
-  recoBody: { flex: 1, gap: 4 },
-  recoLabel: {
-    color: Colors.accent,
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  recoText: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    lineHeight: 20,
-  },
-  recoHighlight: {
-    color: Colors.accent,
-  },
-  recoSub: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontFamily: 'Sora_400Regular',
-    lineHeight: 16,
-  },
-
-  // Pontos fortes & fracos
-  strengthsRow: {
-    flexDirection: 'row',
     gap: 10,
-  },
-  strengthsCard: {
-    flex: 1,
-    gap: 6,
-  },
-  strengthsBrand: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  strengthsName: {
-    color: Colors.textPrimary,
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    lineHeight: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-  },
-  pointsGroup: { gap: 6 },
-  pointsLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  pointsGroupLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.8,
-  },
-  pointRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pointName: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontFamily: 'Sora_400Regular',
-  },
-  pointValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-
-  // Tabela
-  table: { gap: 0 },
-  tableRow: {
-    flexDirection: 'row',
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    paddingVertical: 10,
-    gap: 8,
   },
-  tableHead: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderStrong,
-    paddingBottom: 8,
-    marginBottom: 4,
+  priceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  tableHeadText: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 0.8,
-  },
-  tableCell: {
+  priceInfo: {
     flex: 1,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
-    color: Colors.textSecondary,
+    gap: 1,
   },
-  tableCellAttr: {
+  priceBrand: {
     color: Colors.textHint,
     fontSize: 10,
     fontFamily: 'Sora_600SemiBold',
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    flex: 0.8,
   },
-  betterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 3,
+  priceModel: {
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Sora_600SemiBold',
   },
-  betterLabel: {
-    fontSize: 8,
+  priceValue: {
+    color: Colors.accent,
+    fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
-    letterSpacing: 0.5,
+  },
+  noticeBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: Colors.surface2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Colors.radiusMd,
+    padding: 12,
+    marginTop: 14,
+  },
+  noticeText: {
+    flex: 1,
+    color: Colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: 'Sora_400Regular',
   },
 
   // Modal
   modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   modalSheet: {
@@ -1123,38 +669,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.bg,
     borderTopLeftRadius: Colors.radius2xl,
     borderTopRightRadius: Colors.radius2xl,
-    paddingTop: 12,
-    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 32,
-    maxHeight: '88%',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.borderStrong,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  modalTitle: {
-    color: Colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-  },
-  clearFiltersLabel: {
-    color: Colors.accent,
-    fontSize: 12,
-    fontFamily: 'Sora_600SemiBold',
+    maxHeight: '85%',
   },
   filtersBlock: {
     gap: 10,
@@ -1163,43 +683,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  filterRow: {
-    gap: 6,
-  },
-  filterRowLabel: {
-    color: Colors.textHint,
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-    letterSpacing: 1,
-  },
-  filterChipsScroll: {
-    gap: 6,
-    paddingRight: 20,
-  },
-  filterChip: {
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-    borderRadius: Colors.radiusPill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-  filterChipLabel: {
-    color: Colors.textPrimary,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
-  },
-  filterChipLabelActive: {
-    color: Colors.surface,
-    fontWeight: '600',
-    fontFamily: 'Sora_600SemiBold',
-  },
   listEmpty: {
     paddingVertical: 28,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
   listEmptyText: {
@@ -1208,13 +694,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
   },
   list: { flex: 1 },
-  listContent: { paddingBottom: 20, gap: 4 },
+  listContent: { paddingBottom: 20, paddingHorizontal: 20, gap: 4 },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 10,
-    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -1222,17 +707,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 52,
     borderRadius: Colors.radiusMd,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-  },
-  listThumbLabel: {
-    color: Colors.accent,
-    fontSize: 8,
-    fontWeight: '700',
-    fontFamily: 'Sora_700Bold',
-    letterSpacing: 1,
+    overflow: 'hidden',
   },
   listText: { flex: 1, gap: 1 },
   listBrand: {
@@ -1246,10 +724,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Sora_700Bold',
-  },
-  listPrice: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    fontFamily: 'Sora_400Regular',
   },
 });

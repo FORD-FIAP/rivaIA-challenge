@@ -1,44 +1,116 @@
-/** Composer principal da Home — "Pergunte à RIVA..." */
+/** Composer principal da Home — "Chat Riva", com anexo de imagem e gravação de voz */
 
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
 import { Colors } from '../../theme/colors';
 
-interface ChatInputProps {
-  onSend: (message: string) => void;
+export interface ChatAttachment {
+  imageUri?: string;
+  audioUri?: string;
 }
+
+interface ChatInputProps {
+  onSend: (message: string, attachment?: ChatAttachment) => void;
+}
+
+/** Remove o contorno de foco padrão do navegador (react-native-web) — sem efeito no nativo. */
+const webNoOutline = { outlineStyle: 'none' } as unknown as { outlineWidth: number };
 
 export function ChatInput({ onSend }: ChatInputProps) {
   const [text, setText] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   function handleSend() {
-    if (!text.trim()) return;
-    onSend(text.trim());
+    if (!text.trim() && !imageUri) return;
+    onSend(text.trim(), imageUri ? { imageUri } : undefined);
     setText('');
+    setImageUri(null);
+  }
+
+  async function handlePickImage() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  }
+
+  async function handleToggleRecording() {
+    if (isRecording) {
+      await audioRecorder.stop();
+      setIsRecording(false);
+      if (audioRecorder.uri) {
+        onSend('', { audioUri: audioRecorder.uri });
+      }
+      return;
+    }
+
+    const permission = await AudioModule.requestRecordingPermissionsAsync();
+    if (!permission.granted) return;
+
+    await audioRecorder.prepareToRecordAsync();
+    audioRecorder.record();
+    setIsRecording(true);
   }
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder=""
-        placeholderTextColor={Colors.textHint}
-        value={text}
-        onChangeText={setText}
-        onSubmitEditing={handleSend}
-        returnKeyType="send"
-        multiline={false}
-      />
+      {imageUri && (
+        <View style={styles.attachmentRow}>
+          <Image source={{ uri: imageUri }} style={styles.attachmentThumb} />
+          <TouchableOpacity style={styles.attachmentRemove} onPress={() => setImageUri(null)}>
+            <Feather name="x" size={12} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isRecording ? (
+        <View style={styles.recordingRow}>
+          <View style={styles.recordingDot} />
+          <Text style={styles.recordingLabel}>Gravando áudio...</Text>
+        </View>
+      ) : (
+        <TextInput
+          style={[styles.input, webNoOutline]}
+          placeholder="Chat Riva"
+          placeholderTextColor={Colors.textHint}
+          value={text}
+          onChangeText={setText}
+          onSubmitEditing={handleSend}
+          returnKeyType="send"
+          multiline={false}
+        />
+      )}
+
+      <View style={styles.divider} />
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.addBtn}>
-          <Feather name="plus" size={14} color={Colors.textSecondary} />
+        <TouchableOpacity style={styles.addBtn} onPress={handlePickImage}>
+          <Feather name="plus" size={16} color={Colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.addBtn}>
-          <Feather name="arrow-right" size={14} color={Colors.textSecondary}/>
-        </TouchableOpacity>
+        <View style={styles.footerRight}>
+          <TouchableOpacity
+            style={[styles.addBtn, isRecording && styles.addBtnRecording]}
+            onPress={handleToggleRecording}
+          >
+            <Feather name="mic" size={16} color={isRecording ? Colors.textPrimary : Colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+            <Feather name="arrow-right" size={16} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -61,10 +133,57 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_400Regular',
     minHeight: 20,
   },
+  attachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  attachmentThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: Colors.radiusMd,
+  },
+  attachmentRemove: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginLeft: -10,
+    marginTop: -28,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  recordingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 20,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B6B',
+  },
+  recordingLabel: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontFamily: 'Sora_400Regular',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   addBtn: {
     width: 32,
@@ -75,12 +194,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addBtnRecording: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
+  },
   sendBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.action,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 4,
   },
 });

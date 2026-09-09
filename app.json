@@ -4,30 +4,52 @@
     "slug": "rivaIA-challenge",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo-riva.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rivaia.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "A RIVA usa suas fotos para anexar imagens de veículos na conversa.",
+        "NSMicrophoneUsageDescription": "A RIVA usa o microfone para você conversar por voz."
+      }
     },
     "android": {
+      "package": "com.rivaia.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/logo-riva.png",
+        "backgroundColor": "#201C1D"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/logo-riva.png"
     },
-    "experiments": {
-      "baseUrl": "/rivaIA-challenge"
-    }
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A RIVA usa suas fotos para anexar imagens de veículos na conversa."
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo-riva.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#201C1D"
+        }
+      ]
+    ]
   }
 }
