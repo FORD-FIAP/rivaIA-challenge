@@ -16,8 +16,13 @@ interface ChatRequestBody {
   history?: ChatHistoryItem[];
 }
 
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+// A Google descontinua/renomeia modelo com frequência — tenta essa lista em
+// ordem até um responder, em vez de depender de um único nome fixo estar
+// certo. O primeiro que funcionar é usado; se todos falharem, devolve o
+// erro do último.
+const MODEL_CANDIDATES = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
 
 const SYSTEM_PROMPT =
   'Você é a RIVA, assistente de IA de um app de veículos. Responda de forma curta, ' +
@@ -53,30 +58,37 @@ export default async function handler(req: any, res: any) {
     { role: 'user', parts: [{ text: body.message }] },
   ];
 
-  try {
-    const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
-    });
+  let lastError: { status: number; detail: string } | null = null;
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => '');
-      console.error('Gemini respondeu erro:', response.status, errorBody);
-      res.status(502).json({ error: 'Falha ao consultar o Gemini', status: response.status, detail: errorBody });
+  for (const model of MODEL_CANDIDATES) {
+    try {
+      const response = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        console.error(`Gemini (${model}) respondeu erro:`, response.status, errorBody);
+        lastError = { status: response.status, detail: errorBody };
+        continue; // tenta o próximo candidato (modelo pode ter sido descontinuado)
+      }
+
+      const data = await response.json();
+      const reply: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!reply) {
+        lastError = { status: 502, detail: 'Resposta vazia do Gemini' };
+        continue;
+      }
+
+      res.status(200).json({ reply, model });
       return;
+    } catch (err) {
+      lastError = { status: 502, detail: err instanceof Error ? err.message : 'Erro de rede' };
     }
-
-    const data = await response.json();
-    const reply: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!reply) {
-      res.status(502).json({ error: 'Resposta vazia do Gemini' });
-      return;
-    }
-
-    res.status(200).json({ reply });
-  } catch {
-    res.status(502).json({ error: 'Erro de rede ao consultar o Gemini' });
   }
+
+  res.status(502).json({ error: 'Falha ao consultar o Gemini em todos os modelos testados', ...lastError });
 }
