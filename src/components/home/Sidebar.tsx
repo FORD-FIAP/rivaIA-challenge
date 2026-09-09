@@ -254,7 +254,7 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
               {/* Favoritos */}
               <Text style={[styles.sectionLabel, { marginTop: 24 }]}>FAVORITOS</Text>
               {!isAuthenticated ? (
-                <Text style={styles.emptyText}>Faça login para salvar seus veículos favoritos</Text>
+                <Text style={styles.emptyText}>Faça login para salvar seus veículos</Text>
               ) : favoriteVehicles.length === 0 ? (
                 <Text style={styles.emptyText}>Nenhum veículo favoritado ainda</Text>
               ) : (
