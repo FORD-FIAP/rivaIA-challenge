@@ -18,11 +18,12 @@ interface ChatRequestBody {
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// A Google descontinua/renomeia modelo com frequência — tenta essa lista em
-// ordem até um responder, em vez de depender de um único nome fixo estar
-// certo. O primeiro que funcionar é usado; se todos falharem, devolve o
-// erro do último.
-const MODEL_CANDIDATES = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
+// A Google descontinua/renomeia modelo com frequência, e o mais novo
+// (3.8) tem ficado sobrecarregado ("high demand", 503) — por isso ele NÃO
+// é o primeiro da lista, mesmo sendo o mais recente. Tenta em ordem até um
+// responder; se todos falharem, devolve o erro do último. gemini-2.5-flash
+// foi removido da lista — confirmado descontinuado pra contas novas (404).
+const MODEL_CANDIDATES = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
 
 const SYSTEM_PROMPT =
   'Você é a RIVA, assistente de IA de um app de veículos. Responda de forma curta, ' +
@@ -30,6 +31,17 @@ const SYSTEM_PROMPT =
   'Se não tiver certeza de um dado técnico específico, diga isso claramente em vez de inventar.';
 
 export default async function handler(req: any, res: any) {
+  // CORS — sem isso, o navegador (versão web do app) bloqueia a chamada antes
+  // mesmo dela chegar aqui. No app nativo isso não é necessário, mas não atrapalha.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Método não permitido' });
     return;
@@ -61,6 +73,7 @@ export default async function handler(req: any, res: any) {
   let lastError: { status: number; detail: string } | null = null;
 
   for (const model of MODEL_CANDIDATES) {
+    const startedAt = Date.now();
     try {
       const response = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
@@ -68,9 +81,11 @@ export default async function handler(req: any, res: any) {
         body: JSON.stringify({ contents }),
       });
 
+      const elapsedMs = Date.now() - startedAt;
+
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
-        console.error(`Gemini (${model}) respondeu erro:`, response.status, errorBody);
+        console.error(`Gemini (${model}) respondeu erro após ${elapsedMs}ms:`, response.status, errorBody);
         lastError = { status: response.status, detail: errorBody };
         continue; // tenta o próximo candidato (modelo pode ter sido descontinuado)
       }
@@ -83,7 +98,8 @@ export default async function handler(req: any, res: any) {
         continue;
       }
 
-      res.status(200).json({ reply, model });
+      console.log(`[chat] modelo=${model} tamanho_resposta=${reply.length} tempo=${elapsedMs}ms`);
+      res.status(200).json({ reply, model, elapsedMs });
       return;
     } catch (err) {
       lastError = { status: 502, detail: err instanceof Error ? err.message : 'Erro de rede' };

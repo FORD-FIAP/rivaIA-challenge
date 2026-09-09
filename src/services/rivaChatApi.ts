@@ -10,8 +10,12 @@ import { ChatMessage } from '../hooks/useConversasRecentes';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
 export async function sendChatMessage(message: string, history: ChatMessage[]): Promise<string | null> {
-  if (!API_BASE_URL) return null;
+  if (!API_BASE_URL) {
+    console.warn('[rivaChatApi] EXPO_PUBLIC_API_BASE_URL não está definida — caindo no placeholder.');
+    return null;
+  }
 
+  const startedAt = Date.now();
   try {
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -21,10 +25,21 @@ export async function sendChatMessage(message: string, history: ChatMessage[]): 
         history: history.slice(-10).map((m) => ({ role: m.role, text: m.text })),
       }),
     });
-    if (!response.ok) return null;
+    const roundTripMs = Date.now() - startedAt;
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      console.warn(`[rivaChatApi] backend respondeu erro após ${roundTripMs}ms:`, response.status, bodyText);
+      return null;
+    }
     const data = await response.json();
-    return typeof data?.reply === 'string' ? data.reply : null;
-  } catch {
+    if (typeof data?.reply !== 'string') {
+      console.warn('[rivaChatApi] resposta sem campo "reply":', data);
+      return null;
+    }
+    console.log(`[rivaChatApi] round-trip=${roundTripMs}ms backend_elapsed=${data.elapsedMs}ms modelo=${data.model}`);
+    return data.reply;
+  } catch (err) {
+    console.warn(`[rivaChatApi] falha de rede após ${Date.now() - startedAt}ms:`, err);
     return null;
   }
 }
