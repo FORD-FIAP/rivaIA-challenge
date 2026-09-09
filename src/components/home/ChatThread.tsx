@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { RivaOrb } from './RivaOrb';
 import { ChatMessage } from '../../context/ChatContext';
+import { MarkdownText } from './MarkdownText';
 
 interface ChatThreadProps {
   messages: ChatMessage[];
@@ -65,7 +66,7 @@ function RivaBubble({ text }: { text: string }) {
         <Text style={styles.rivaLabel}>
           RIVA <Text style={styles.rivaLabelMuted}>· agente automotivo</Text>
         </Text>
-        <Text style={styles.bodyText}>{text}</Text>
+        <MarkdownText text={text} style={styles.bodyText} boldStyle={styles.bodyTextBold} />
       </View>
     </View>
   );
@@ -161,6 +162,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     fontFamily: 'Sora_400Regular',
+  },
+  bodyTextBold: {
+    fontFamily: 'Sora_700Bold',
+    fontWeight: '700',
   },
   typingBubble: {
     flexDirection: 'row',
