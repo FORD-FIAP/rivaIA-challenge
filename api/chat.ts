@@ -17,7 +17,7 @@ interface ChatRequestBody {
 }
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const SYSTEM_PROMPT =
   'Você é a RIVA, assistente de IA de um app de veículos. Responda de forma curta, ' +
@@ -61,7 +61,9 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!response.ok) {
-      res.status(502).json({ error: 'Falha ao consultar o Gemini' });
+      const errorBody = await response.text().catch(() => '');
+      console.error('Gemini respondeu erro:', response.status, errorBody);
+      res.status(502).json({ error: 'Falha ao consultar o Gemini', status: response.status, detail: errorBody });
       return;
     }
 
