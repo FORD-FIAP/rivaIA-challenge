@@ -73,5 +73,23 @@ export function useConversasRecentes() {
     save([]);
   }, []);
 
-  return { conversas, arquivar, limpar };
+  const remover = useCallback((titulo: string) => {
+    setConversas((prev) => {
+      const next = prev.filter((c) => c.titulo !== titulo);
+      save(next);
+      return next;
+    });
+  }, []);
+
+  const renomear = useCallback((tituloAntigo: string, novoTitulo: string) => {
+    const trimmed = novoTitulo.trim();
+    if (!trimmed || trimmed === tituloAntigo) return;
+    setConversas((prev) => {
+      const next = prev.map((c) => (c.titulo === tituloAntigo ? { ...c, titulo: trimmed } : c));
+      save(next);
+      return next;
+    });
+  }, []);
+
+  return { conversas, arquivar, limpar, remover, renomear };
 }

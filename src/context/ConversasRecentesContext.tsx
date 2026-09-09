@@ -5,12 +5,16 @@ interface ConversasRecentesContextValue {
   conversas: ConversaArquivada[];
   arquivar: (conversa: ConversaArquivada) => void;
   limpar: () => void;
+  remover: (titulo: string) => void;
+  renomear: (tituloAntigo: string, novoTitulo: string) => void;
 }
 
 const ConversasRecentesContext = createContext<ConversasRecentesContextValue>({
   conversas: [],
   arquivar: () => {},
   limpar: () => {},
+  remover: () => {},
+  renomear: () => {},
 });
 
 export function ConversasRecentesProvider({ children }: { children: React.ReactNode }) {

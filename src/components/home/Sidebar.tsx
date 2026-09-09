@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   Image,
   StyleSheet,
@@ -18,8 +19,9 @@ import { useChat } from '../../context/ChatContext';
 import { useConversasRecentesContext } from '../../context/ConversasRecentesContext';
 import { useFavoritesContext } from '../../context/FavoritesContext';
 import { ConversaArquivada } from '../../hooks/useConversasRecentes';
-import { noticias } from '../../mock/noticias';
+import { noticias as noticiasMock, Noticia } from '../../mock/noticias';
 import { getCachedVehicle } from '../../services/fipeApi';
+import { fetchNoticias } from '../../services/newsApi';
 import { Vehicle } from '../../types/vehicle';
 
 interface SidebarProps {
@@ -58,7 +60,16 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   const { activeScreen, navigate, openVehicle } = useNavigation();
   const { user, isAuthenticated, requestLogin } = useAuth();
   const { resetChat, loadConversation } = useChat();
-  const { conversas: conversasRecentes } = useConversasRecentesContext();
+  const { conversas: conversasRecentes, remover, renomear } = useConversasRecentesContext();
+  const [editandoTitulo, setEditandoTitulo] = useState<string | null>(null);
+  const [rascunhoTitulo, setRascunhoTitulo] = useState('');
+  const [noticias, setNoticias] = useState<Noticia[]>(noticiasMock);
+
+  useEffect(() => {
+    fetchNoticias().then((result) => {
+      if (result && result.length > 0) setNoticias(result);
+    });
+  }, []);
   const { favorites } = useFavoritesContext();
   const favoriteVehicles = favorites
     .map((id) => getCachedVehicle(id))
@@ -68,6 +79,11 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   const [filtroAberto, setFiltroAberto] = useState(false);
   const slideAnim = useRef(new Animated.Value(DRAWER_OFFSET)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  const chatsFavoritados = useMemo(
+    () => conversasRecentes.filter((c) => c.favorited),
+    [conversasRecentes],
+  );
 
   const recentesVisiveis = useMemo(
     () => selecionarRecentesVisiveis(conversasRecentes),
@@ -121,6 +137,16 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   function handleAbrirVeiculo(id: string) {
     openVehicle(id);
     onClose();
+  }
+
+  function iniciarEdicao(titulo: string) {
+    setEditandoTitulo(titulo);
+    setRascunhoTitulo(titulo);
+  }
+
+  function confirmarEdicao() {
+    if (editandoTitulo) renomear(editandoTitulo, rascunhoTitulo);
+    setEditandoTitulo(null);
   }
 
   function handleAvatarPress() {
@@ -190,17 +216,17 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
                 </Text>
               ) : (
                 chatsFiltrados.map((c, idx) => (
-                  <TouchableOpacity
+                  <ChatRow
                     key={`${c.titulo}-${idx}`}
-                    style={styles.listItem}
-                    onPress={() => handleAbrirConversa(c)}
-                  >
-                    <Feather name="message-circle" size={13} color={Colors.textMuted} />
-                    <Text style={styles.listItemLabel} numberOfLines={1}>
-                      {c.titulo}
-                    </Text>
-                    {c.favorited && <Feather name="star" size={13} color={Colors.accent} />}
-                  </TouchableOpacity>
+                    conversa={c}
+                    editando={editandoTitulo === c.titulo}
+                    rascunho={rascunhoTitulo}
+                    onChangeRascunho={setRascunhoTitulo}
+                    onAbrir={() => handleAbrirConversa(c)}
+                    onEditar={() => iniciarEdicao(c.titulo)}
+                    onConfirmarEdicao={confirmarEdicao}
+                    onExcluir={() => remover(c.titulo)}
+                  />
                 ))
               )}
             </ScrollView>
@@ -251,25 +277,39 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
                 })}
               </View>
 
-              {/* Favoritos */}
+              {/* Favoritos — veículos e chats favoritados, juntos */}
               <Text style={[styles.sectionLabel, { marginTop: 24 }]}>FAVORITOS</Text>
               {!isAuthenticated ? (
-                <Text style={styles.emptyText}>Faça login para salvar seus veículos</Text>
-              ) : favoriteVehicles.length === 0 ? (
-                <Text style={styles.emptyText}>Nenhum veículo favoritado ainda</Text>
+                <Text style={styles.emptyText}>Faça login para salvar seus favoritos</Text>
+              ) : favoriteVehicles.length === 0 && chatsFavoritados.length === 0 ? (
+                <Text style={styles.emptyText}>Nada favoritado ainda</Text>
               ) : (
-                favoriteVehicles.map((v) => (
-                  <TouchableOpacity
-                    key={v.id}
-                    style={styles.listItem}
-                    onPress={() => handleAbrirVeiculo(v.id)}
-                  >
-                    <Feather name="star" size={13} color={Colors.accent} />
-                    <Text style={styles.listItemLabel} numberOfLines={1}>
-                      {v.versao}
-                    </Text>
-                  </TouchableOpacity>
-                ))
+                <>
+                  {favoriteVehicles.map((v) => (
+                    <TouchableOpacity
+                      key={v.id}
+                      style={styles.listItem}
+                      onPress={() => handleAbrirVeiculo(v.id)}
+                    >
+                      <MaterialCommunityIcons name="car-side" size={13} color={Colors.accent} />
+                      <Text style={styles.listItemLabel} numberOfLines={1}>
+                        {v.versao}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  {chatsFavoritados.map((c, idx) => (
+                    <TouchableOpacity
+                      key={`fav-chat-${c.titulo}-${idx}`}
+                      style={styles.listItem}
+                      onPress={() => handleAbrirConversa(c)}
+                    >
+                      <Feather name="message-circle" size={13} color={Colors.accent} />
+                      <Text style={styles.listItemLabel} numberOfLines={1}>
+                        {c.titulo}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
               )}
 
               {/* Recentes */}
@@ -281,17 +321,17 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
               ) : (
                 <>
                   {recentesVisiveis.map((c, idx) => (
-                    <TouchableOpacity
+                    <ChatRow
                       key={`${c.titulo}-${idx}`}
-                      style={styles.listItem}
-                      onPress={() => handleAbrirConversa(c)}
-                    >
-                      <Feather name="message-circle" size={13} color={Colors.textMuted} />
-                      <Text style={styles.listItemLabel} numberOfLines={1}>
-                        {c.titulo}
-                      </Text>
-                      {c.favorited && <Feather name="star" size={13} color={Colors.accent} />}
-                    </TouchableOpacity>
+                      conversa={c}
+                      editando={editandoTitulo === c.titulo}
+                      rascunho={rascunhoTitulo}
+                      onChangeRascunho={setRascunhoTitulo}
+                      onAbrir={() => handleAbrirConversa(c)}
+                      onEditar={() => iniciarEdicao(c.titulo)}
+                      onConfirmarEdicao={confirmarEdicao}
+                      onExcluir={() => remover(c.titulo)}
+                    />
                   ))}
                   {temMaisRecentes && (
                     <TouchableOpacity onPress={() => setView('chats')}>
@@ -335,6 +375,63 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
         )}
       </Animated.View>
     </View>
+  );
+}
+
+/** Linha de conversa em Recentes/Todos os Chats — título, e botões de editar/excluir.
+ * Quando `editando`, o título vira um TextInput em vez dos botões. */
+function ChatRow({
+  conversa,
+  editando,
+  rascunho,
+  onChangeRascunho,
+  onAbrir,
+  onEditar,
+  onConfirmarEdicao,
+  onExcluir,
+}: {
+  conversa: ConversaArquivada;
+  editando: boolean;
+  rascunho: string;
+  onChangeRascunho: (value: string) => void;
+  onAbrir: () => void;
+  onEditar: () => void;
+  onConfirmarEdicao: () => void;
+  onExcluir: () => void;
+}) {
+  if (editando) {
+    return (
+      <View style={styles.listItem}>
+        <Feather name="message-circle" size={13} color={Colors.textMuted} />
+        <TextInput
+          style={styles.editInput}
+          value={rascunho}
+          onChangeText={onChangeRascunho}
+          onSubmitEditing={onConfirmarEdicao}
+          autoFocus
+          selectTextOnFocus
+        />
+        <TouchableOpacity onPress={onConfirmarEdicao} hitSlop={6}>
+          <Feather name="check" size={15} color={Colors.accent} />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity style={styles.listItem} onPress={onAbrir} activeOpacity={0.7}>
+      <Feather name="message-circle" size={13} color={Colors.textMuted} />
+      <Text style={styles.listItemLabel} numberOfLines={1}>
+        {conversa.titulo}
+      </Text>
+      {conversa.favorited && <Feather name="star" size={13} color={Colors.accent} />}
+      <TouchableOpacity onPress={onEditar} hitSlop={6} style={styles.rowActionBtn}>
+        <Feather name="edit-2" size={13} color={Colors.textMuted} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onExcluir} hitSlop={6} style={styles.rowActionBtn}>
+        <Feather name="trash-2" size={13} color={Colors.textMuted} />
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
 }
 
@@ -448,6 +545,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
     fontFamily: 'Sora_400Regular',
+  },
+  rowActionBtn: {
+    padding: 2,
+  },
+  editInput: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: 13,
+    fontFamily: 'Sora_400Regular',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.accent,
+    paddingVertical: 2,
   },
   footerRow: {
     flexDirection: 'row',
