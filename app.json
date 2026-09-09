@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "rivaIA-challenge",
+    "name": "riva.ia",
     "slug": "rivaIA-challenge",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -24,8 +24,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "READ_MEDIA_IMAGES",
-        "RECORD_AUDIO"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "web": {
@@ -50,6 +53,12 @@
           "backgroundColor": "#201C1D"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c14d29ee-7f02-4560-bbba-6c30848de3fd"
+      }
+    },
+    "owner": "xsmits"
   }
 }

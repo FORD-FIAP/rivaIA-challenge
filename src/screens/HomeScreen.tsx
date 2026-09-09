@@ -85,7 +85,7 @@ export function HomeScreen() {
               resizeMode="contain"
             />
             <Text style={styles.title}>
-              {saudacao}{user ? `, ${user.name}` : ''}.
+              {saudacao}{user ? `, ${user.name}` : ''}
             </Text>
           </View>
 
