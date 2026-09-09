@@ -5,11 +5,13 @@
  * "boxed" para a RIVA. Enquanto não há IA de verdade por trás (backend +
  * Gemini Flash), as mensagens são só texto simples.
  */
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Share } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../../theme/colors';
 import { RivaOrb } from './RivaOrb';
-import { ChatMessage } from '../../context/ChatContext';
+import { ChatMessage, useChat } from '../../context/ChatContext';
 import { MarkdownText } from './MarkdownText';
 
 interface ChatThreadProps {
@@ -38,7 +40,7 @@ export function ChatThread({ messages, isTyping }: ChatThreadProps) {
         msg.role === 'user' ? (
           <UserBubble key={msg.id} text={msg.text} />
         ) : (
-          <RivaBubble key={msg.id} text={msg.text} />
+          <RivaBubble key={msg.id} id={msg.id} text={msg.text} />
         ),
       )}
       {isTyping && <TypingBubble />}
@@ -56,7 +58,23 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function RivaBubble({ text }: { text: string }) {
+type Feedback = 'like' | 'dislike' | null;
+
+function RivaBubble({ id, text }: { id: string; text: string }) {
+  const { regenerate } = useChat();
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await Clipboard.setStringAsync(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function handleShare() {
+    Share.share({ message: text }).catch(() => {});
+  }
+
   return (
     <View style={styles.rivaRow}>
       <View style={styles.rivaAvatarCol}>
@@ -67,6 +85,32 @@ function RivaBubble({ text }: { text: string }) {
           RIVA <Text style={styles.rivaLabelMuted}>· agente automotivo</Text>
         </Text>
         <MarkdownText text={text} style={styles.bodyText} boldStyle={styles.bodyTextBold} />
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleCopy} hitSlop={6}>
+            <Feather name={copied ? 'check' : 'copy'} size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleShare} hitSlop={6}>
+            <Feather name="share" size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => regenerate(id)} hitSlop={6}>
+            <Feather name="refresh-cw" size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => setFeedback((f) => (f === 'like' ? null : 'like'))}
+            hitSlop={6}
+          >
+            <Feather name="thumbs-up" size={14} color={feedback === 'like' ? Colors.accent : Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => setFeedback((f) => (f === 'dislike' ? null : 'dislike'))}
+            hitSlop={6}
+          >
+            <Feather name="thumbs-down" size={14} color={feedback === 'dislike' ? Colors.accent : Colors.textMuted} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -166,6 +210,19 @@ const styles = StyleSheet.create({
   bodyTextBold: {
     fontFamily: 'Sora_700Bold',
     fontWeight: '700',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  actionBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typingBubble: {
     flexDirection: 'row',
