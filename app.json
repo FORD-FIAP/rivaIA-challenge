@@ -8,12 +8,16 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.rivaia.app",
+      "buildNumber": "1.0.0",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "A RIVA usa suas fotos para anexar imagens de veículos na conversa.",
         "NSMicrophoneUsageDescription": "A RIVA usa o microfone para você conversar por voz."
       }
     },
     "android": {
+      "package": "com.rivaia.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-riva.png",
         "backgroundColor": "#201C1D"
